@@ -1,0 +1,4 @@
+tabulate
+polars
+plotly
+scikit-learn
