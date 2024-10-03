@@ -1,5 +1,11 @@
-tabulate
+# Basic stack
 polars
-plotly
 scikit-learn
+tabulate
+tqdm
+plotly
 mkdocs
+
+# Modeling
+
+# Projec-specific
