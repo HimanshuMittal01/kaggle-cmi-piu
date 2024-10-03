@@ -1,0 +1,5 @@
+site_name: CMIPIU Solution
+
+nav:
+  - Home: index.md
+  - Notebooks: notebooks.md

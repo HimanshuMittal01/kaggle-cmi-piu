@@ -2,3 +2,4 @@ tabulate
 polars
 plotly
 scikit-learn
+mkdocs
