@@ -9,5 +9,6 @@ mkdocs
 
 # Modeling
 lightgbm
+optuna
 
-# Projec-specific
+# Project-specific
