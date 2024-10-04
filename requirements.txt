@@ -3,7 +3,8 @@ polars
 scikit-learn
 tabulate
 tqdm
-plotly
+altair
+vegafusion[embed]
 mkdocs
 
 # Modeling
