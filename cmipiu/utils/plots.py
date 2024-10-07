@@ -5,14 +5,15 @@ Contains utility functions for visualization
 import polars as pl
 import altair as alt
 
-def viz_crosstab(data: pl.DataFrame, x: str, y: str, normalize_over_x: bool = False, width: int = None, height: int = None, scheme: str = "lighttealblue"):
+def viz_crosstab(data: pl.DataFrame, x: str, y: str, normalize_over_x: bool = False, width: int = None, height: int = None, scheme: str = "lighttealblue", precision: int = 0):
     group_counts = data.group_by([x, y]).agg(
-        count=pl.col(x).count()
+        count=pl.col(x).len()
     )
 
     if normalize_over_x:
+        if not precision: precision=2
         group_counts = group_counts.with_columns(
-            (pl.col('count') / pl.col('count').sum()).over(x).round(2)
+            (pl.col('count') / pl.col('count').sum()).over(x)
         )
     
     minv = group_counts.select('count').min().item()
@@ -26,14 +27,14 @@ def viz_crosstab(data: pl.DataFrame, x: str, y: str, normalize_over_x: bool = Fa
 
     heatmap = alt.Chart(group_counts).mark_rect(stroke='black', strokeWidth=1).encode(
         alt.X(field=x, type='nominal'),
-        alt.Y(field=y, type='ordinal', scale=alt.Scale()),
+        alt.Y(field=y, type='ordinal'),
         alt.Color('count', scale=alt.Scale(scheme=scheme)),
     )
 
     text = heatmap.mark_text().encode(
         alt.X(field=x, type='nominal'),
         alt.Y(field=y, type='ordinal'),
-        alt.Text(field='count', type='quantitative'),
+        alt.Text(field='count', type='quantitative', format=f'0.{precision}f'),
         color=alt.condition(
             alt.datum.count >= value_range,
             alt.value('white'),
