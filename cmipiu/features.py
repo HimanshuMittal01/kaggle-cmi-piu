@@ -150,3 +150,81 @@ def aggregate_pq_files_v2(files):
 
     aggdf = pl.concat(aggs)
     return aggdf
+
+
+def aggregate_pq_files_v3(files):
+    def _add_info_to_df(df):
+        df = df.with_columns(pl.lit(pqfile.name.removeprefix('id=')).alias('id'))
+        df = df.pipe(relative_days).pipe(anglez_features)
+        return df
+    
+    def make_feature_exps(col):
+        return [
+            pl.col(col).mean().alias(f'{col}_mean'),
+            pl.col(col).std().alias(f'{col}_std'),
+        ] + [pl.col(col).quantile(q).alias(f'{col}_{q}') for q in [0.25,0.5,0.75]]
+    
+    def _agg_dfs(dfs):
+        df = pl.concat(dfs)
+
+        daily_avg_df = df.group_by(['id', 'relative_date_PCIAT']).agg(
+            pl.col('enmo').mean().alias('daily_avg_enmo'),
+            pl.col('light').mean().alias('daily_avg_light')
+        )
+
+        result_df = df.group_by('id').agg(
+            pl.col('relative_date_PCIAT').min().alias('relative_start_date_PCIAT'),
+            (pl.col('relative_date_PCIAT').max() - pl.col('relative_date_PCIAT').min()).alias('total_days'),
+            pl.col('non-wear_flag').mean().alias('non-wear_flag_mean'),
+            pl.col('non-wear_flag').std().alias('non-wear_flag_std'),
+            *make_feature_exps('X'),
+            *make_feature_exps('Y'),
+            *make_feature_exps('anglez'),
+            *make_feature_exps('enmo'),
+            *make_feature_exps('light'),
+            *make_feature_exps('rolling_std_anglez')
+        )
+
+        result_df = result_df.join(
+            daily_avg_df.group_by('id').agg(
+                pl.col('daily_avg_enmo').min().alias('daily_avg_enmo_min'),
+                pl.col('daily_avg_enmo').mean().alias('daily_avg_enmo_mean'),
+                pl.col('daily_avg_enmo').std().alias('daily_avg_enmo_std'),
+                pl.col('daily_avg_enmo').max().alias('daily_avg_enmo_max'),
+                pl.col('daily_avg_light').min().alias('daily_avg_light_min'),
+                pl.col('daily_avg_light').mean().alias('daily_avg_light_mean'),
+                pl.col('daily_avg_light').std().alias('daily_avg_light_std'),
+                pl.col('daily_avg_light').max().alias('daily_avg_light_max'),
+            ),
+            on='id',
+            how='left'
+        ).cast(
+            {cs.numeric(): pl.Float32}
+        )
+
+        return result_df.collect()
+    
+    aggs = []
+    dfs = []
+    curr_total = 0
+    for pqfile in tqdm(files, desc='Aggregating pq files'):
+        df = pl.scan_parquet(pqfile)
+        df = _add_info_to_df(df)
+        dfs.append(df)
+        _len = df.select(pl.len()).collect().item()
+        curr_total += _len
+        
+        # Aggregate >3M rows together
+        if curr_total > 3e6:
+            agg = _agg_dfs(dfs)
+            aggs.append(agg)
+
+            # reset
+            dfs = []
+            curr_total = 0
+    if dfs:
+        agg = _agg_dfs(dfs)
+        aggs.append(agg)
+
+    aggdf = pl.concat(aggs)
+    return aggdf
