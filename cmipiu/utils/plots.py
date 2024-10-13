@@ -98,7 +98,7 @@ def viz_countplot(data: pl.DataFrame, x: str, barcolor: str = '#1f77b4', enableT
         text = bar.mark_text().transform_calculate(
             textPos=alt.datum.count + 0.025 * counts['count'].max()
         ).encode(
-            alt.Y('textPos:Q'),
+            alt.Y('textPos:Q', axis=alt.Axis(title='count')),
             alt.Text('count:Q')
         )
         return bar + text
@@ -113,6 +113,18 @@ def viz_areaplot(data: pl.DataFrame, x: str, width: int = 0, height: int = 0, ba
     ).properties(
         width=width,
         height=height,
+    )
+
+    return chart
+
+
+def viz_histogram(data: pl.DataFrame, x: str, width: int = 0, height: int = 0, barcolor: str = '#1f77b4', bin: alt.Bin = None):
+    chart = alt.Chart(data).mark_bar(color=barcolor).encode(
+        alt.X(field=x, type='quantitative', bin=bin),
+        alt.Y('count()')
+    ).properties(
+        width=width,
+        height=height
     )
 
     return chart
