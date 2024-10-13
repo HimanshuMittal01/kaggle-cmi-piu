@@ -36,3 +36,6 @@ class XGB_LGBM_Ensemble:
 
     def predict(self, X):
         return self.model.predict(X)
+
+    def get_booster(self):
+        return self.model
