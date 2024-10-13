@@ -33,9 +33,10 @@ def filter_irrelevant_data(df, pq_train_dirpath):
     )
 
 
-def remove_extreme_outliers(df):
-    return df.filter(
-        pl.col('id')!='83525bbe'
+def make_extreme_outliers_null(df):
+    return df.with_columns(
+        pl.when(pl.col('id')!='83525bbe').then(pl.col('CGAS-CGAS_Score')).otherwise(None),
+        pl.when(~pl.col('id').is_in(['cedf96c5', 'e252dcb6'])).then(pl.col([col for col in df.columns if col.startswith('BIA')])).otherwise(None),
     )
 
 

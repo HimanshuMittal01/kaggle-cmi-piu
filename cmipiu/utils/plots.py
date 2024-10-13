@@ -128,3 +128,62 @@ def viz_histogram(data: pl.DataFrame, x: str, width: int = 0, height: int = 0, b
     )
 
     return chart
+
+
+def viz_bubble_chart(data: pl.DataFrame, x: str, y: str, normalize_over_x: bool = False, width: int = None, height: int = None, scheme: str = "lighttealblue"):
+    group_counts = data.group_by([x, y]).agg(
+        count=pl.col(x).len()
+    )
+
+    if normalize_over_x:
+        group_counts = group_counts.with_columns(
+            (pl.col('count') / pl.col('count').sum()).over(x)
+        )
+
+    n1 = group_counts.select(x).n_unique()
+    n2 = group_counts.select(y).n_unique()
+    if width is None: width = 100+20*n1
+    if height is None: height = 50+20*n2
+
+    heatmap = alt.Chart(group_counts).mark_circle(stroke='black', strokeWidth=1).encode(
+        alt.X(field=x, type='ordinal'),
+        alt.Y(field=y, type='ordinal'),
+        alt.Color('count', scale=alt.Scale(scheme=scheme)),
+        alt.Size('count'),
+    ).properties(
+        width=width,
+        height=height,
+    )
+
+    return heatmap
+
+
+def viz_kdeplot(data: pl.DataFrame, x: str, color: str = None, width: int = 0, height: int = 0, scheme: str = "lighttealblue", cumulative: bool = False):
+    if color is not None:
+        chart = alt.Chart(data).transform_density(
+            groupby=[color],
+            density=x,
+            cumulative=cumulative,
+            as_=[x, 'density']
+        ).mark_line().encode(
+            alt.X(field=x, type="quantitative"),
+            alt.Y('density:Q'),
+            alt.Color(field=color, type='nominal')
+        )
+    
+    else:
+        chart = alt.Chart(data).transform_density(
+            density=x,
+            cumulative=cumulative,
+            as_=[x, 'density']
+        ).mark_line().encode(
+            alt.X(field=x, type="quantitative"),
+            alt.Y('density:Q'),
+        )
+    
+    chart = chart.properties(
+        width=width,
+        height=height,
+    )
+
+    return chart
