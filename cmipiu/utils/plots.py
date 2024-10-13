@@ -217,3 +217,38 @@ def viz_violin_boxplot(data: pl.DataFrame, x: str, y: str, scheme: str = "catego
     )
 
     return final_chart
+
+
+def viz_heatmap(data: pl.DataFrame, width: int = 0, height: int = 0, annot: bool = False, precision: int = 2, method: str = 'pearson'):
+    _new_data = []
+    for col1 in data.columns:
+        for col2 in data.columns:
+            _new_data.append([col1, col2, data.drop_nulls(subset=[col1, col2]).select(pl.corr(pl.col(col1), pl.col(col2), method=method)).item()])
+
+    df = pl.DataFrame(_new_data, schema=['column1', 'column2', 'value'], orient='row')
+
+    base = alt.Chart(df).encode(
+        alt.X(field='column1', type='nominal', title=None),
+        alt.Y(field='column2', type='nominal', title=None),
+    )
+
+    heatmap = base.mark_rect().encode(
+        alt.Color('value:Q')
+    )
+
+    if annot:
+        text = base.mark_text().encode(
+            alt.Text(field='value', type='quantitative', format=f'0.{precision}f'),
+            color=alt.condition(
+                alt.datum.value >= 0.7,
+                alt.value('white'),
+                alt.value('black')
+            )
+        ).properties(
+            width=width,
+            height=height,
+        )
+
+        return heatmap + text
+
+    return heatmap
