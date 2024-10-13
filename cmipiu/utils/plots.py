@@ -168,7 +168,7 @@ def viz_kdeplot(data: pl.DataFrame, x: str, color: str = None, width: int = 0, h
         ).mark_line().encode(
             alt.X(field=x, type="quantitative"),
             alt.Y('density:Q'),
-            alt.Color(field=color, type='nominal')
+            alt.Color(field=color, type='nominal', scale=alt.Scale(scheme=scheme))
         )
     
     else:
@@ -187,3 +187,33 @@ def viz_kdeplot(data: pl.DataFrame, x: str, color: str = None, width: int = 0, h
     )
 
     return chart
+
+
+def viz_violin_boxplot(data: pl.DataFrame, x: str, y: str, scheme: str = "category10", boxcolor: str = '#3e3e3e'):
+    base = alt.Chart(data, width=100).encode(
+        alt.Y(field=y, type='quantitative'),
+    )
+
+    chart1 = base.transform_density(
+        y,
+        as_=[y, 'density'],
+        extent=[data[y].min(), data[y].max()],
+        groupby=[x]
+    ).mark_area(orient='horizontal').encode(
+        alt.Color(field=x, type='nominal', scale=alt.Scale(scheme=scheme)),
+        alt.X('density:Q')
+            .stack('center')
+            .impute(None)
+            .title(None)
+            .axis(labels=False, values=[0], grid=False, ticks=True),
+    )
+
+    chart2 = base.mark_boxplot(color=boxcolor)
+
+    final_chart = alt.layer(chart1, chart2).facet(
+        f'{x}:N'
+    ).resolve_scale(
+        x='independent'
+    )
+
+    return final_chart

@@ -8,7 +8,9 @@ import polars as pl
 def handle_zero_weight_bmi(df):
     return df.with_columns(
         pl.col('Physical-BMI').replace(0, None),
-        pl.col('Physical-Weight').replace(0, None)
+        pl.col('Physical-Weight').replace(0, None),
+        pl.col('Physical-Diastolic_BP').replace(0, None),
+        pl.col('Physical-Systolic_BP').replace(0, None)
     )
 
 
