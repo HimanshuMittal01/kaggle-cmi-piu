@@ -133,7 +133,10 @@ def postXY_FE(df, is_training=False, imputer=None, encoder=None):
 
 
 def select_features(df):
-    drop_features = ['daily_avg_light_mean', 'light_mean', 'PAQ_A-Season', 'BIA-BIA_FFM', 'enmo_mean', 'total_days', 'non-wear_flag_mean']
+    drop_features1 = ['daily_avg_enmo_std', 'light_0.25', 'enmo_0.5', 'rolling_std_anglez_0.25', 'enmo_0.75', 'non-wear_flag_mean', 'daily_avg_enmo_max', 'total_days', 'light_mean', 'tBIA-BIA_FFM', 'light_0.75', 'daily_avg_light_mean', 'daily_avg_light_max', 'enmo_std', 'Y_0.5', 'FGC-FGC_TL_Zone', 'enmo_mean', 'anglez_0.5', 'daily_avg_light_std', 'PAQ_A-Season']
+    drop_features2 = ['BIA-Season', 'tBIA-BIA_TBW', 'X_0.25', 'anglez_0.75', 'rolling_std_anglez_std', 'anglez_0.25', 'FGC-Season', 'X_0.5']
+    drop_features3 = ['FGC-FGC_SRR_Zone', 'rolling_std_anglez_0.5', 'BIA-BIA_FFM', 'light_0.5', 'daily_avg_light_min', 'rolling_std_anglez_0.75']
+    drop_features = drop_features1 + drop_features2 + drop_features3
     df = df.drop(drop_features)
 
     return df

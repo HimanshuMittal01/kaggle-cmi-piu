@@ -5,7 +5,7 @@ Module for training functions
 import numpy as np
 from scipy.optimize import minimize
 from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, confusion_matrix
 from cmipiu.metrics import roundoff, quadratic_weighted_kappa, evaluate
 
 
@@ -42,5 +42,9 @@ def trainML(X, y_pciat, y, model):
 
     y_pred_tuned = roundoff(oof_raw, thresholds=thresholds)
     print("Tuned OOF Score:", quadratic_weighted_kappa(y, y_pred_tuned))
+
+    print("OOF Accuracy:", accuracy_score(y, y_pred_tuned))
+    print("OOF Confusion matrix:")
+    print(confusion_matrix(y, y_pred_tuned))
 
     return models, thresholds

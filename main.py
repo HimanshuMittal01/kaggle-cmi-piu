@@ -13,7 +13,7 @@ from cmipiu.data.cleaning import (
     fix_target
 )
 from cmipiu.data.transformation import aggregate_pq_files_v3
-from cmipiu.data.features import preXY_FE, makeXY, postXY_FE
+from cmipiu.data.features import preXY_FE, makeXY, postXY_FE, select_features
 from cmipiu.engine import EnsembleModel
 from cmipiu.train import trainML
 from cmipiu.predict import predictML
@@ -81,6 +81,10 @@ if __name__ == '__main__':
     # Feature engineering for training dataset
     X, imputer, encoder = postXY_FE(X, is_training=True)
     print(f"Train X shape after feature engineering: {X.shape}")
+
+    # Select features
+    X = select_features(X)
+    print(f"Train X shape after selecting features: {X.shape}")
 
     # Make model
     best_hyperparams = [
@@ -150,6 +154,7 @@ if __name__ == '__main__':
     # INFERENCE
     test, _ = preXY_FE(test, is_training=False, meanstd_values=meanstd_values)
     X_test, _, _ = postXY_FE(test, is_training=False, imputer=imputer, encoder=encoder)
+    X_test = select_features(X_test)
     y_pred_test = predictML(models, X=X_test, thresholds=thresholds)
     print("Inference completed!")
     print(f"First five predictions: {y_pred_test[:5]}")
