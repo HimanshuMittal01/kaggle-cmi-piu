@@ -18,10 +18,10 @@ def trainML(X, y_pciat, y, model):
     models = []
     for fold, (tridx, validx) in enumerate(skf.split(X, y)):
         model_ = model.clone()
-        model_.fit(X[tridx], y_pciat[tridx].to_numpy().ravel())
+        model_.fit(X[tridx].to_numpy(), y_pciat[tridx].to_numpy().ravel())
         models.append(model_)
         
-        y_pred = model_.predict(X[validx])
+        y_pred = model_.predict(X[validx].to_numpy())
         oof_raw[validx] = y_pred
         y_pred = roundoff(y_pred, thresholds=[30, 50, 80])
         oof[validx] = y_pred

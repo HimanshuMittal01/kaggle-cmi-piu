@@ -18,6 +18,125 @@ from cmipiu.engine import EnsembleModel
 from cmipiu.train import trainML
 from cmipiu.predict import predictML
 
+def build_model():
+    params1 = [
+        {
+            'name': 'lgbm1',
+            'model_class': 'LGBMRegressor',
+            'params': {
+                'n_estimators': 500,
+                'learning_rate': 0.012083492339234362,
+                'num_leaves': 920,
+                'max_depth': 11,
+                'min_data_in_leaf': 180,
+                'lambda_l1': 0,
+                'lambda_l2': 100,
+                'min_gain_to_split': 3.6624386212204185,
+                'bagging_fraction': 1.0,
+                'bagging_freq': 1,
+                'feature_fraction': 0.8,
+                'random_state': 42,
+                'verbose': -1
+            }
+        },
+        {
+            'name': 'lgbm2',
+            'model_class': 'LGBMRegressor',
+            'params': {
+                'n_estimators': 1000,
+                'learning_rate': 0.010408028856708502,
+                'num_leaves': 200,
+                'max_depth': 3,
+                'min_data_in_leaf': 180,
+                'lambda_l1': 55,
+                'lambda_l2': 35,
+                'min_gain_to_split': 12.248451136883414,
+                'bagging_fraction': 0.9000000000000001,
+                'bagging_freq': 1,
+                'feature_fraction': 0.8,
+                'random_state': 42,
+                'verbose': -1
+            }
+        },
+        {
+            'name': 'xgb1',
+            'model_class': 'XGBRegressor',
+            'params': {
+                'n_estimators': 1000,
+                'objective': 'reg:squarederror',
+                'learning_rate': 0.019888518860232546,
+                'max_depth': 4,
+                'subsample': 0.1473684690874815,
+                'colsample_bytree': 0.738734350960037,
+                'min_child_weight': 12,
+                'verbosity': 0,
+                'reg_alpha': 39,
+                'reg_lambda': 91,
+                'random_state': 42,
+            }
+        },
+        {
+            'name': 'xgb2',
+            'model_class': 'XGBRegressor',
+            'params': {
+                'n_estimators': 1000,
+                'objective': 'reg:squarederror',
+                'learning_rate': 0.0060719378449389984,
+                'max_depth': 4,
+                'subsample': 0.6625690509886571,
+                'colsample_bytree': 0.4296384997993591,
+                'min_child_weight': 10,
+                'verbosity': 0,
+                'reg_alpha': 89,
+                'reg_lambda': 85,
+                'random_state': 42,
+            }
+        },
+    ]
+
+    params2 = [
+        {
+            'name': 'xgb1',
+            'model_class': 'XGBRegressor',
+            'params': {
+                'verbosity': 0,
+                'random_state': 42
+            }
+        },
+        {
+            'name': 'lgbm1',
+            'model_class': 'LGBMRegressor',
+            'params': {
+                'random_state': 42,
+                'verbose': -1
+            }
+        },
+        {
+            'name': 'rf1',
+            'model_class': 'RandomForestRegressor',
+            'params': {
+                'random_state': 42,
+            }
+        },
+        {
+            'name': 'catb1',
+            'model_class': 'CatBoostRegressor',
+            'params': {
+                'silent': True,
+                'allow_writing_files': False,
+                'random_state': 42,
+            }
+        },
+    ]
+
+    model = EnsembleModel(
+        [
+            EnsembleModel(params1).to_params('ensemble1'),
+            EnsembleModel(params2).to_params('ensemble2')
+        ]
+    )
+    return model
+
 
 if __name__ == '__main__':
     # Load data
@@ -87,65 +206,7 @@ if __name__ == '__main__':
     print(f"Train X shape after selecting features: {X.shape}")
 
     # Make model
-    best_hyperparams = [
-        {
-            'name': 'lgbm1',
-            'model_class': 'LGBMRegressor',
-            'params': {
-                'n_estimators': 500,
-                'learning_rate': 0.012083492339234362,
-                'num_leaves': 920,
-                'max_depth': 11,
-                'min_data_in_leaf': 180,
-                'lambda_l1': 0,
-                'lambda_l2': 100,
-                'min_gain_to_split': 3.6624386212204185,
-                'bagging_fraction': 1.0,
-                'bagging_freq': 1,
-                'feature_fraction': 0.8,
-                'random_state': 42,
-                'verbose': -1
-            }
-        },
-        {
-            'name': 'xgb1',
-            'model_class': 'XGBRegressor',
-            'params': {
-                'n_estimators': 1000,
-                'objective': 'reg:squarederror',
-                'learning_rate': 0.019888518860232546,
-                'max_depth': 4,
-                'subsample': 0.1473684690874815,
-                'colsample_bytree': 0.738734350960037,
-                'min_child_weight': 12,
-                'verbosity': 0,
-                'reg_alpha': 39,
-                'reg_lambda': 91,
-                'random_state': 42,
-            }
-        },
-        {
-            'name': 'lgbm2',
-            'model_class': 'LGBMRegressor',
-            'params': {
-                'n_estimators': 1000,
-                'learning_rate': 0.010408028856708502,
-                'num_leaves': 200,
-                'max_depth': 3,
-                'min_data_in_leaf': 180,
-                'lambda_l1': 55,
-                'lambda_l2': 35,
-                'min_gain_to_split': 12.248451136883414,
-                'bagging_fraction': 0.9000000000000001,
-                'bagging_freq': 1,
-                'feature_fraction': 0.8,
-                'random_state': 42,
-                'verbose': -1
-            }
-        }
-    ]
-
-    model = EnsembleModel(best_hyperparams)
+    model = build_model()
     print("Successfully built model!")
 
     # TRAINING
