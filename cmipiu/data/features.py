@@ -8,7 +8,57 @@ from sklearn.preprocessing import OrdinalEncoder
 from sklearn.impute import KNNImputer
 
 
-def make_XY(df):
+def preXY_FE(df, is_training=False, meanstd_values=None):
+    fgc_mags = [col for col in df.columns if col.startswith('FGC') and col!='FGC-Season' and not col.endswith('Zone')]
+    bia_mags = [col for col in df.columns if col.startswith('BIA') and col!='BIA-Season' and col!='BIA-BIA_Activity_Level_num' and col!='BIA-BIA_Frame_num']
+    cols_to_transform = fgc_mags + bia_mags
+
+    def make_new_wh(df):
+        return df.with_columns(
+            neww=pl.col('Physical-Weight') // 10,
+            newh=pl.col('Physical-Height') // 6
+        )
+    
+    def make_meanstd_cols(df, meanstd_values=None):
+        if meanstd_values is None:
+            return df.with_columns(
+                [pl.col(col).mean().over(['Basic_Demos-Age', 'Basic_Demos-Sex', 'neww', 'newh']).alias(f'm{col}') for col in cols_to_transform]
+                + [pl.col(col).std().over(['Basic_Demos-Age', 'Basic_Demos-Sex', 'neww', 'newh']).fill_null(1).alias(f's{col}') for col in cols_to_transform],
+            )
+
+        else:
+            return df.join(
+                meanstd_values,
+                on=['Basic_Demos-Age', 'Basic_Demos-Sex', 'neww', 'newh'],
+                how='left'
+            )
+    
+    def make_tvalues(df):
+        return df.with_columns(
+            [((pl.col(col) - pl.col(f'm{col}')) / pl.col(f's{col}')).alias(f't{col}') for col in cols_to_transform]
+        )
+    
+    df = (
+        df
+        .pipe(make_new_wh)
+        .pipe(make_meanstd_cols, meanstd_values=meanstd_values)
+        .pipe(make_tvalues)
+    )
+
+    tvalues = None
+    if is_training:
+        tvalues = df.select(
+            pl.col(['Basic_Demos-Age', 'Basic_Demos-Sex', 'neww', 'newh'] + [f'm{col}' for col in cols_to_transform] + [f's{col}' for col in cols_to_transform])
+        ).unique()
+
+    df = df.drop(
+        ['neww', 'newh'] + [f'm{col}' for col in cols_to_transform] + [f's{col}' for col in cols_to_transform]
+    )
+
+    return df, tvalues
+
+
+def makeXY(df):
     print(f'Number of rows before dropping nulls: {df.shape[0]}')
     df = df.drop_nulls(subset=['sii'])
     print(f'Number of rows after dropping nulls: {df.shape[0]}')
@@ -20,9 +70,10 @@ def make_XY(df):
     return X, y_pciat, y
 
 
-def feature_engineering(df, is_training=False, imputer=None, encoder=None):
+def postXY_FE(df, is_training=False, imputer=None, encoder=None):
     df = df.with_columns(
         (pl.col('CGAS-CGAS_Score') // 5).alias('CGAS-CGAS_Score'),
+        (pl.col('Physical-Waist_Circumference').is_null().alias('missingindicator_Waist_Circumference')),
         PAQ_Total = pl.when(
             (pl.col('PAQ_C-PAQ_C_Total').is_null()) | (pl.col('PAQ_A-PAQ_A_Total').is_null())
         )
@@ -65,7 +116,7 @@ def feature_engineering(df, is_training=False, imputer=None, encoder=None):
         'PreInt_EduHx-computerinternet_hoursday'
     ]
     if is_training:
-        imputer = KNNImputer(n_neighbors=10, add_indicator=True)
+        imputer = KNNImputer(n_neighbors=10)
         res = imputer.fit_transform(df[imputing_cols])
     else:
         assert imputer is not None
@@ -74,13 +125,15 @@ def feature_engineering(df, is_training=False, imputer=None, encoder=None):
     df = df.drop(imputing_cols)
     imputed_df = pl.DataFrame(res, schema=list(imputer.get_feature_names_out()), orient="row")
     df = pl.concat([df, imputed_df], how="horizontal")
-    missing_indicator_cols = [col for col in imputed_df.columns if col.startswith('missingindicator') and col not in ['missingindicator_Physical-Waist_Circumference', 'missingindicator_CGAS-CGAS_Score']]
-    df = df.drop(missing_indicator_cols)
-    
-    drop_Features = ['daily_avg_enmo_max', 'X_0.5', 'daily_avg_light_min', 'daily_avg_enmo_std', 'enmo_0.5', 'anglez_mean', 'light_0.5', 'enmo_std', 'light_mean', 'rolling_std_anglez_std', 'enmo_0.75', 'light_0.25', 'Y_0.5', 'enmo_mean', 'daily_avg_light_std', 'total_days', 'missingindicator_CGAS-CGAS_Score', 'daily_avg_light_max', 'non-wear_flag_mean', 'daily_avg_light_mean', 'light_0.75', 'anglez_0.5', 'PAQ_A-Season']
-    df = df.drop(drop_Features)
     
     if is_training:
         return df, imputer, encoder
     else:
         return df, None, None
+
+
+def select_features(df):
+    drop_features = ['daily_avg_light_mean', 'light_mean', 'PAQ_A-Season', 'BIA-BIA_FFM', 'enmo_mean', 'total_days', 'non-wear_flag_mean']
+    df = df.drop(drop_features)
+
+    return df

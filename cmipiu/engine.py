@@ -6,29 +6,36 @@ import xgboost as xgb
 import lightgbm as lgb
 from sklearn.ensemble import VotingRegressor
 
-class XGB_LGBM_Ensemble:
-    def __init__(self, xgb_params, lgbm_params):
-        self.xgb_params = xgb_params
-        self.lgbm_params = lgbm_params
+class EnsembleModel:
+    def __init__(self, params):
+        self.params = params
+        self.model = self._build_model(self.params)
 
-        self.model = self._build_model(self.xgb_params, self.lgbm_params)
+    def _build_model(self, params):
+        estimators = []
+        weights = []
+        for paraminfo in params:
+            if 'weight' in paraminfo:
+                weights.append(paraminfo['weight'])
+            else:
+                weights.append(1)
 
-    def _build_model(self, xgb_params, lgbm_params):
+            if paraminfo['model_class'] == 'XGBRegressor':
+                estimators.append((paraminfo['name'], xgb.XGBRegressor(**paraminfo['params'])))
+            elif paraminfo['model_class'] == 'LGBMRegressor':
+                estimators.append((paraminfo['name'], lgb.LGBMRegressor(**paraminfo['params'])))
+            # elif paraminfo['model_class'] == 'CatBoostRegressor':
+            #     estimators.append((paraminfo['name'], paraminfo['params']))
+            #     CatBoostRegressor(silent=True, allow_writing_files=False)
+
         model = VotingRegressor(
-            estimators=[
-                # CatBoostRegressor(silent=True, allow_writing_files=False)
-                ('xgb', xgb.XGBRegressor(**xgb_params)),
-                ('lgbm', lgb.LGBMRegressor(**lgbm_params))
-            ],
-            weights=[10, 20]
+            estimators=estimators,
+            weights=weights
         )
         return model
     
     def clone(self):
-        cloned_model = XGB_LGBM_Ensemble(
-            xgb_params=self.xgb_params,
-            lgbm_params=self.lgbm_params
-        )
+        cloned_model = EnsembleModel(self.params)
         return cloned_model
 
     def fit(self, X, y):

@@ -219,7 +219,7 @@ def viz_violin_boxplot(data: pl.DataFrame, x: str, y: str, scheme: str = "catego
     return final_chart
 
 
-def viz_heatmap(data: pl.DataFrame, width: int = 0, height: int = 0, annot: bool = False, precision: int = 2, method: str = 'pearson'):
+def viz_corrheatmap(data: pl.DataFrame, width: int = 0, height: int = 0, annot: bool = False, precision: int = 2, method: str = 'pearson'):
     _new_data = []
     for col1 in data.columns:
         for col2 in data.columns:

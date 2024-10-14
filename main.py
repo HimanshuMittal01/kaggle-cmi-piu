@@ -13,8 +13,8 @@ from cmipiu.data.cleaning import (
     fix_target
 )
 from cmipiu.data.transformation import aggregate_pq_files_v3
-from cmipiu.data.features import make_XY, feature_engineering
-from cmipiu.engine import XGB_LGBM_Ensemble
+from cmipiu.data.features import preXY_FE, makeXY, postXY_FE
+from cmipiu.engine import EnsembleModel
 from cmipiu.train import trainML
 from cmipiu.predict import predictML
 
@@ -60,11 +60,15 @@ if __name__ == '__main__':
     # Join aggregates with main data
     train = train.join(train_agg, how='left', on='id')
     test = test.join(test_agg, how='left', on='id')
-    print(f"New train shape after joining aggregates: {train.shape}")
-    print(f"New test shape after joining aggregates: {test.shape}")
+    print(f"Train shape after joining aggregates: {train.shape}")
+    print(f"Test shape after joining aggregates: {test.shape}")
+
+    # Pre feature engineering for training dataset
+    train, meanstd_values = preXY_FE(train, is_training=False)
+    print(f"Train shape after preXY FE: {train.shape}")
 
     # Prepare for training
-    X, y_pciat, y = make_XY(train)
+    X, y_pciat, y = makeXY(train)
     print(f"Train X shape: {X.shape}")
     print(f"Train y shape: {y.shape}")
     print(f"Train y_pciat shape: {y_pciat.shape}")
@@ -75,48 +79,77 @@ if __name__ == '__main__':
     y_pciat.write_parquet('input/processed/y_pciat.parquet')
 
     # Feature engineering for training dataset
-    X, imputer, encoder = feature_engineering(X, is_training=True)
+    X, imputer, encoder = postXY_FE(X, is_training=True)
     print(f"Train X shape after feature engineering: {X.shape}")
 
     # Make model
-    best_params_lgbm = {
-        'n_estimators': 500,
-        'learning_rate': 0.012083492339234362,
-        'num_leaves': 920,
-        'max_depth': 11,
-        'min_data_in_leaf': 180,
-        'lambda_l1': 0,
-        'lambda_l2': 100,
-        'min_gain_to_split': 3.6624386212204185,
-        'bagging_fraction': 1.0,
-        'bagging_freq': 1,
-        'feature_fraction': 0.8,
-        'random_state': 42,
-        'verbose': -1
-    }
-    best_params_xgb = {
-        'n_estimators': 1000,
-        'learning_rate': 0.006,
-        'max_depth': 4,
-        'subsample': 0.6,
-        'colsample_bytree': 0.8,
-        'min_child_weight': 15,
-        'verbosity': 0,
-        'reg_alpha': 60,
-        'reg_lambda': 80,
-        'random_state': 42,
-    }
-    model = XGB_LGBM_Ensemble(
-        xgb_params=best_params_xgb,
-        lgbm_params=best_params_lgbm
-    )
+    best_hyperparams = [
+        {
+            'name': 'lgbm1',
+            'model_class': 'LGBMRegressor',
+            'params': {
+                'n_estimators': 500,
+                'learning_rate': 0.012083492339234362,
+                'num_leaves': 920,
+                'max_depth': 11,
+                'min_data_in_leaf': 180,
+                'lambda_l1': 0,
+                'lambda_l2': 100,
+                'min_gain_to_split': 3.6624386212204185,
+                'bagging_fraction': 1.0,
+                'bagging_freq': 1,
+                'feature_fraction': 0.8,
+                'random_state': 42,
+                'verbose': -1
+            }
+        },
+        {
+            'name': 'xgb1',
+            'model_class': 'XGBRegressor',
+            'params': {
+                'n_estimators': 1000,
+                'objective': 'reg:squarederror',
+                'learning_rate': 0.019888518860232546,
+                'max_depth': 4,
+                'subsample': 0.1473684690874815,
+                'colsample_bytree': 0.738734350960037,
+                'min_child_weight': 12,
+                'verbosity': 0,
+                'reg_alpha': 39,
+                'reg_lambda': 91,
+                'random_state': 42,
+            }
+        },
+        {
+            'name': 'lgbm2',
+            'model_class': 'LGBMRegressor',
+            'params': {
+                'n_estimators': 1000,
+                'learning_rate': 0.010408028856708502,
+                'num_leaves': 200,
+                'max_depth': 3,
+                'min_data_in_leaf': 180,
+                'lambda_l1': 55,
+                'lambda_l2': 35,
+                'min_gain_to_split': 12.248451136883414,
+                'bagging_fraction': 0.9000000000000001,
+                'bagging_freq': 1,
+                'feature_fraction': 0.8,
+                'random_state': 42,
+                'verbose': -1
+            }
+        }
+    ]
+
+    model = EnsembleModel(best_hyperparams)
     print("Successfully built model!")
 
     # TRAINING
     models, thresholds = trainML(X, y_pciat, y, model)
 
     # INFERENCE
-    X_test, _, _ = feature_engineering(test, is_training=False, imputer=imputer, encoder=encoder)
+    test, _ = preXY_FE(test, is_training=False, meanstd_values=meanstd_values)
+    X_test, _, _ = postXY_FE(test, is_training=False, imputer=imputer, encoder=encoder)
     y_pred_test = predictML(models, X=X_test, thresholds=thresholds)
     print("Inference completed!")
     print(f"First five predictions: {y_pred_test[:5]}")
