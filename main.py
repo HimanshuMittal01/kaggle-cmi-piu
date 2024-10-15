@@ -6,13 +6,14 @@ from pathlib import Path
 
 import polars as pl
 
-from cmipiu.data.cleaning import (
+from cmipiu.data.clean import (
     handle_zero_weight_bmi,
     filter_irrelevant_data,
     make_extreme_outliers_null,
     fix_target
 )
-from cmipiu.data.transformation import aggregate_pq_files_v3, autoencode
+from cmipiu.data.ingest import autoencode
+from cmipiu.data.transformation import aggregate_pq_files_v3
 from cmipiu.data.features import preXY_FE, makeXY, postXY_FE, select_features
 from cmipiu.engine import EnsembleModel
 from cmipiu.train import trainML

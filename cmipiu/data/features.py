@@ -4,10 +4,13 @@ Module responsible for feature engineering
 
 import polars as pl
 
+from prefect import task
+
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.impute import KNNImputer
 
 
+@task
 def preXY_FE(df, is_training=False, meanstd_values=None):
     fgc_mags = [col for col in df.columns if col.startswith('FGC') and col!='FGC-Season' and not col.endswith('Zone')]
     bia_mags = [col for col in df.columns if col.startswith('BIA') and col!='BIA-Season' and col!='BIA-BIA_Activity_Level_num' and col!='BIA-BIA_Frame_num']
@@ -58,6 +61,7 @@ def preXY_FE(df, is_training=False, meanstd_values=None):
     return df, tvalues
 
 
+@task
 def makeXY(df):
     print(f'Number of rows before dropping nulls: {df.shape[0]}')
     df = df.drop_nulls(subset=['sii'])
@@ -70,6 +74,7 @@ def makeXY(df):
     return X, y_pciat, y
 
 
+@task
 def postXY_FE(df, is_training=False, imputer=None, encoder=None):
     df = df.with_columns(
         (pl.col('CGAS-CGAS_Score') // 5).alias('CGAS-CGAS_Score'),
@@ -132,6 +137,7 @@ def postXY_FE(df, is_training=False, imputer=None, encoder=None):
         return df, None, None
 
 
+@task
 def select_features(df):
     drop_features1 = ['daily_avg_enmo_std', 'light_0.25', 'enmo_0.5', 'rolling_std_anglez_0.25', 'enmo_0.75', 'non-wear_flag_mean', 'daily_avg_enmo_max', 'total_days', 'light_mean', 'tBIA-BIA_FFM', 'light_0.75', 'daily_avg_light_mean', 'daily_avg_light_max', 'enmo_std', 'Y_0.5', 'FGC-FGC_TL_Zone', 'enmo_mean', 'anglez_0.5', 'daily_avg_light_std', 'PAQ_A-Season']
     drop_features2 = ['BIA-Season', 'tBIA-BIA_TBW', 'X_0.25', 'anglez_0.75', 'rolling_std_anglez_std', 'anglez_0.25', 'FGC-Season', 'X_0.5']

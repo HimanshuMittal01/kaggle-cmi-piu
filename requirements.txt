@@ -6,6 +6,7 @@ tqdm
 altair
 vegafusion[embed]
 mkdocs
+prefect
 
 # Modeling
 lightgbm
@@ -13,5 +14,3 @@ xgboost
 catboost
 optuna
 torch
-
-# Project-specific
