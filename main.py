@@ -12,7 +12,7 @@ from cmipiu.data.cleaning import (
     make_extreme_outliers_null,
     fix_target
 )
-from cmipiu.data.transformation import aggregate_pq_files_v3
+from cmipiu.data.transformation import aggregate_pq_files_v3, autoencode
 from cmipiu.data.features import preXY_FE, makeXY, postXY_FE, select_features
 from cmipiu.engine import EnsembleModel
 from cmipiu.train import trainML
@@ -180,6 +180,12 @@ if __name__ == '__main__':
     train_agg.write_parquet('input/processed/train_agg.parquet')
     test_agg.write_parquet('input/processed/test_agg.parquet')
 
+    # Autoencode train and test
+    train_agg, autoencoder, agg_mean, agg_std = autoencode(train_agg)
+    test_agg, _, _, _ = autoencode(test_agg, autoencoder=autoencoder, agg_mean=agg_mean, agg_std=agg_std)
+    print(f"Train aggregate features shape after autoencoding: {train_agg.shape}")
+    print(f"Test aggregate features shape after autoencoding: {test_agg.shape}")
+
     # Join aggregates with main data
     train = train.join(train_agg, how='left', on='id')
     test = test.join(test_agg, how='left', on='id')
@@ -206,8 +212,8 @@ if __name__ == '__main__':
     print(f"Train X shape after feature engineering: {X.shape}")
 
     # Select features
-    X = select_features(X)
-    print(f"Train X shape after selecting features: {X.shape}")
+    # X = select_features(X)
+    # print(f"Train X shape after selecting features: {X.shape}")
 
     # Make model
     model = build_model()
@@ -219,7 +225,7 @@ if __name__ == '__main__':
     # INFERENCE
     test, _ = preXY_FE(test, is_training=False, meanstd_values=meanstd_values)
     X_test, _, _ = postXY_FE(test, is_training=False, imputer=imputer, encoder=encoder)
-    X_test = select_features(X_test)
+    # X_test = select_features(X_test)
     y_pred_test = predictML(models, X=X_test, thresholds=thresholds)
     print("Inference completed!")
     print(f"First five predictions: {y_pred_test[:5]}")

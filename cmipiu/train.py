@@ -2,10 +2,16 @@
 Module for training functions
 """
 
+import torch
+import torch.nn as nn
+import torch.optim as optim
 import numpy as np
+import polars as pl
 from scipy.optimize import minimize
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score, confusion_matrix
+
+from cmipiu.engine import AutoEncoder
 from cmipiu.metrics import roundoff, quadratic_weighted_kappa, evaluate
 
 
@@ -48,3 +54,40 @@ def trainML(X, y_pciat, y, model):
     print(confusion_matrix(y, y_pred_tuned))
 
     return models, thresholds
+
+
+def trainAutoEncoder(df, encoding_dim=50, epochs=100, learning_rate=0.001):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    input_dim = df.shape[1]
+    autoencoder = AutoEncoder(input_dim, encoding_dim).to(device)
+
+    # Loss function and optimizer
+    criterion = nn.MSELoss()  # For reconstruction error
+    optimizer = optim.Adam(autoencoder.parameters(), lr=learning_rate)
+
+    # Move data to device
+    inputs = df.to_torch(dtype=pl.Float32).to(device)
+
+    for epoch in range(epochs):
+        running_loss = 0.0
+
+        # Forward pass
+        outputs = autoencoder(inputs)
+        loss = criterion(outputs, inputs)
+        
+        # Backward pass and optimization
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+        # Accumulate loss
+        running_loss += loss.item()
+
+        # Print average loss for the epoch
+        if epoch % 10 == 0:
+            print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss:.4f}")
+
+    print('Autoencoder training Complete')
+
+    return autoencoder

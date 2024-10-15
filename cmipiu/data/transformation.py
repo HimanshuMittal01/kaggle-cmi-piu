@@ -6,6 +6,8 @@ import polars as pl
 import polars.selectors as cs
 from tqdm import tqdm
 
+from cmipiu.train import trainAutoEncoder
+from cmipiu.predict import predictAutoEncoder
 
 
 def aggregate_pq_files(files, cols):
@@ -233,3 +235,28 @@ def aggregate_pq_files_v3(files):
         pl.col('total_days')>0
     )
     return aggdf
+
+
+def autoencode(df, autoencoder=None, agg_mean=None, agg_std=None):
+    df_scaled = df.drop('id')
+
+    if agg_mean is None:
+        agg_mean = df_scaled.mean()
+    if agg_std is None:
+        agg_std = df_scaled.std()
+
+    df_scaled = df_scaled.with_columns(
+        [(pl.col(c) - agg_mean[c]) / (agg_std[c] + 1e-10) for c in df_scaled.columns]
+    )
+
+    if autoencoder is None:
+        autoencoder = trainAutoEncoder(
+            df=df_scaled,
+            encoding_dim=30,
+            epochs=100,
+            learning_rate=0.001
+        )
+    
+    df_transformed = predictAutoEncoder(autoencoder, df_scaled)
+    df_transformed = pl.DataFrame(df_transformed.detach().numpy()).with_columns(df['id'])
+    return df_transformed, autoencoder, agg_mean, agg_std

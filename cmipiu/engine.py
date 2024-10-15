@@ -2,6 +2,8 @@
 Module containing core algorithm and models
 """
 
+import torch
+import torch.nn as nn
 import numpy as np
 import xgboost as xgb
 import lightgbm as lgb
@@ -74,3 +76,18 @@ class EnsembleModel:
     @property
     def feature_importances_(self):
         return self._ensemble_feature_importance(self.model)
+
+
+class AutoEncoder(nn.Module):
+    def __init__(self, input_dim, encoding_dim):
+        super().__init__()
+        self.input_dim = input_dim
+        self.encoding_dim = encoding_dim
+
+        self.encoder = torch.nn.Linear(input_dim, encoding_dim)
+        self.decoder = torch.nn.Linear(encoding_dim, input_dim)
+
+    def forward(self, X):
+        X = self.encoder(X)
+        X = self.decoder(X)
+        return X

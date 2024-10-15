@@ -2,7 +2,9 @@
 Module containing inference code
 """
 
+import torch
 import numpy as np
+import polars as pl
 
 from cmipiu.metrics import roundoff
 
@@ -13,3 +15,11 @@ def predictML(models, X, y=None, thresholds=[30, 50, 80]):
     
     y_pred = roundoff(y_preds.mean(axis=1), thresholds)
     return y_pred
+
+
+def predictAutoEncoder(autoencoder, X):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    autoencoder = autoencoder.to(device)
+
+    inputs = X.to_torch(dtype=pl.Float32).to(device)
+    return autoencoder.encoder(inputs)
