@@ -176,6 +176,10 @@ if __name__ == '__main__':
     test_agg = aggregate_pq_files_v3(files)
     print(f"Test aggregate features shape: {test_agg.shape}")
 
+    # Save intermediate output
+    train_agg.write_parquet('input/processed/train_agg.parquet')
+    test_agg.write_parquet('input/processed/test_agg.parquet')
+
     # Join aggregates with main data
     train = train.join(train_agg, how='left', on='id')
     test = test.join(test_agg, how='left', on='id')

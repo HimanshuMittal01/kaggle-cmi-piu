@@ -227,4 +227,9 @@ def aggregate_pq_files_v3(files):
         aggs.append(agg)
 
     aggdf = pl.concat(aggs)
+
+    # Filter out days having total days <= 0
+    aggdf = aggdf.filter(
+        pl.col('total_days')>0
+    )
     return aggdf

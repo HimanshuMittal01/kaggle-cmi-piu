@@ -12,5 +12,6 @@ lightgbm
 xgboost
 catboost
 optuna
+torch
 
 # Project-specific
