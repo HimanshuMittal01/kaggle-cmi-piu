@@ -7,15 +7,13 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import polars as pl
-from prefect import task
 from scipy.optimize import minimize
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score, confusion_matrix
 
-from cmipiu.engine import AutoEncoder
-from cmipiu.metrics import roundoff, quadratic_weighted_kappa, evaluate
+from cmipiu.src.engine.engine import AutoEncoder
+from cmipiu.src.engine.metrics import roundoff, quadratic_weighted_kappa, evaluate
 
-@task
 def trainML(X, y_pciat, y, model):
     skf = StratifiedKFold()
 
@@ -57,7 +55,6 @@ def trainML(X, y_pciat, y, model):
     return models, thresholds
 
 
-@task
 def trainAutoEncoder(df, encoding_dim=50, epochs=100, learning_rate=0.001):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 

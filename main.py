@@ -15,9 +15,9 @@ from cmipiu.data.clean import (
 from cmipiu.data.ingest import autoencode
 from cmipiu.data.transformation import aggregate_pq_files_v3
 from cmipiu.data.features import preXY_FE, makeXY, postXY_FE, select_features
-from cmipiu.engine import EnsembleModel
-from cmipiu.train import trainML
-from cmipiu.predict import predictML
+from cmipiu.src.engine.engine import EnsembleModel
+from cmipiu.src.engine.train import trainML
+from cmipiu.src.engine.predict import predictML
 
 def build_model():
     params1 = [

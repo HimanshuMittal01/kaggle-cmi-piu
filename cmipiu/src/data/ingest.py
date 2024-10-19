@@ -3,25 +3,22 @@ Module that defines data ingestion tasks
 """
 
 import polars as pl
-from prefect import task
 
-from cmipiu.data.clean import (
+from cmipiu.src.data.clean import (
     handle_zero_weight_bmi,
     make_extreme_outliers_null,
     filter_irrelevant_data,
     fix_target
 )
-from cmipiu.data.transformation import aggregate_pq_files_v3
-from cmipiu.predict import predictAutoEncoder
-from cmipiu.train import trainAutoEncoder
+from cmipiu.src.data.transformation import aggregate_pq_files_v3
+from cmipiu.src.engine.predict import predictAutoEncoder
+from cmipiu.src.engine.train import trainAutoEncoder
 
-@task
 def load_csv_data(path):
     df = pl.read_csv(path)
     return df
 
 
-@task
 def clean_traincsv_data(df, pq_train_dirpath):
     df = (
         df
@@ -33,7 +30,6 @@ def clean_traincsv_data(df, pq_train_dirpath):
     return df
 
 
-@task
 def clean_testcsv_data(df):
     df = (
         df
@@ -42,14 +38,12 @@ def clean_testcsv_data(df):
     return df
 
 
-@task
 def get_aggregated_pq_files(dir):
     files = [file for file in dir.iterdir()]
     train_agg = aggregate_pq_files_v3(files)
     return train_agg
 
 
-@task
 def autoencode(df, autoencoder=None, agg_mean=None, agg_std=None):
     df_scaled = df.drop('id')
 
@@ -75,7 +69,6 @@ def autoencode(df, autoencoder=None, agg_mean=None, agg_std=None):
     return df_transformed, autoencoder, agg_mean, agg_std
 
 
-@task
 def merge_csv_pqagg_data(df_csv, df_pqagg):
     return df_csv.join(df_pqagg, how='left', on='id')
 

@@ -4,9 +4,7 @@ Module responsible for workflows
 
 from pathlib import Path
 
-from prefect import flow
-
-from cmipiu.data.ingest import (
+from cmipiu.src.data.ingest import (
     load_csv_data,
     clean_traincsv_data,
     clean_testcsv_data,
@@ -14,17 +12,17 @@ from cmipiu.data.ingest import (
     autoencode,
     merge_csv_pqagg_data
 )
-from cmipiu.data.features import (
+from cmipiu.src.data.features import (
     preXY_FE,
     makeXY,
     postXY_FE,
     select_features
 )
-from cmipiu.engine import EnsembleModel
-from cmipiu.train import trainML
-from cmipiu.predict import predictML
+from cmipiu.src.engine.engine import EnsembleModel
+from cmipiu.src.engine.train import trainML
+from cmipiu.src.engine.predict import predictML
+from cmipiu.src.config import config
 
-@flow(log_prints=True)
 def train_autoencoder_pipeline(data_dir: Path):
     # Load data
     print("Load training data...")
@@ -63,60 +61,15 @@ def train_autoencoder_pipeline(data_dir: Path):
     print(f"Train X shape (after postXY FE): {X.shape}")
 
     # Make model
-    params = [
-        {
-            'name': 'lgbm',
-            'model_class': 'LGBMRegressor',
-            'params': {
-                'n_estimators': 300,
-                'learning_rate': 0.046,
-                'max_depth': 12,
-                'num_leaves': 478,
-                'min_data_in_leaf': 13,
-                'lambda_l1': 10,
-                'lambda_l2': 0.01,
-                'bagging_fraction': 0.784,
-                'bagging_freq': 4,
-                'feature_fraction': 0.893,
-                'random_state': 42,
-                'verbose': -1
-            }
-        },
-        {
-            'name': 'xgb',
-            'model_class': 'XGBRegressor',
-            'params': {
-                'n_estimators': 200,
-                'learning_rate': 0.05,
-                'max_depth': 6,
-                'subsample': 0.8,
-                'colsample_bytree': 0.8,
-                'reg_alpha': 1,
-                'reg_lambda': 5,
-                'tree_method': 'exact',
-                'random_state': 42,
-                'verbosity': 0,
-            }
-        },
-        {
-            'name': 'catb',
-            'model_class': 'CatBoostRegressor',
-            'params': {
-                'learning_rate': 0.05,
-                'depth': 6,
-                'iterations': 200,
-                'l2_leaf_reg': 10,
-                'verbose': 0,
-                'allow_writing_files': False,
-                'random_seed': 42,
-            }
-        },
-    ]
+    params = config.autoencoder_params
     model = EnsembleModel(params)
     print("Successfully built model!")
 
     # TRAINING
     models, thresholds = trainML(X, y_pciat, y, model)
+
+    # INFERENCE
+    y_train_preds = predictML(models, X=X, thresholds=None)
 
     return {
         'autoencoder': autoencoder,
@@ -126,11 +79,11 @@ def train_autoencoder_pipeline(data_dir: Path):
         'imputer': imputer,
         'encoder': encoder,
         'models': models,
-        'thresholds': thresholds
+        'thresholds': thresholds,
+        'train_preds': y_train_preds
     }
 
 
-@flow(log_prints=True)
 def predict_autoencoder_pipeline(data_dir: Path, autoencoder, agg_mean, agg_std, meanstd_values, imputer, encoder, models, thresholds):
     # Load data
     print("Load testing data...")
@@ -163,7 +116,6 @@ def predict_autoencoder_pipeline(data_dir: Path, autoencoder, agg_mean, agg_std,
     return y_pred_test
 
 
-@flow(log_prints=True)
 def run_autoencoder_pipeline(data_dir: Path):
     artifacts = train_autoencoder_pipeline(data_dir)
 
@@ -182,7 +134,6 @@ def run_autoencoder_pipeline(data_dir: Path):
     return output
 
 
-@flow(log_prints=True)
 def train_ensemble_pipeline(data_dir: Path):
     # Load data
     print("Load training data...")
@@ -301,16 +252,63 @@ def train_ensemble_pipeline(data_dir: Path):
     # TRAINING
     models, thresholds = trainML(X, y_pciat, y, model)
 
+    # INFERENCE
+    y_train_preds = predictML(models, X=X, thresholds=None)
+
     return {
         'meanstd_values': meanstd_values,
         'imputer': imputer,
         'encoder': encoder,
         'models': models,
-        'thresholds': thresholds
+        'thresholds': thresholds,
+        'train_preds': y_train_preds
     }
 
 
-@flow(log_prints=True)
+def predict_ensemble_pipeline(data_dir: Path, meanstd_values, imputer, encoder, models, thresholds):
+    # Load data
+    print("Load testing data...")
+    
+    test = load_csv_data(data_dir / "test.csv")
+    print(f"Test shape (loaded): {test.shape}")
+
+    # Clean data
+    test = clean_testcsv_data(test)
+    print(f"Test shape (after cleaning): {test.shape}")
+
+    # Make aggregate
+    test_agg = get_aggregated_pq_files(data_dir / 'series_test.parquet')
+    print(f"Test aggregate shape: {test_agg.shape}")
+
+    # Join aggregates with main data
+    test = merge_csv_pqagg_data(test, test_agg)
+    print(f"Test shape (after joining): {test.shape}")
+
+    # INFERENCE
+    test, _ = preXY_FE(test, is_training=False, meanstd_values=meanstd_values)
+    X_test, _, _ = postXY_FE(test, is_training=False, imputer=imputer, encoder=encoder)
+    X_test = select_features(X_test)
+    y_pred_test = predictML(models, X=X_test, thresholds=thresholds)
+    print("Inference completed!")
+
+    return y_pred_test
+
+
+def run_ensemble_pipeline(data_dir: Path):
+    artifacts = train_ensemble_pipeline(data_dir)
+
+    output = predict_ensemble_pipeline(
+        data_dir=data_dir,
+        meanstd_values=artifacts['meanstd_values'],
+        imputer=artifacts['imputer'],
+        encoder=artifacts['encoder'],
+        models=artifacts['models'],
+        thresholds=artifacts['thresholds']
+    )
+
+    return output
+
+
 def train_naive_pipeline(data_dir: Path):
     # Load data
     print("Load training data...")
@@ -385,12 +383,57 @@ def train_naive_pipeline(data_dir: Path):
     # TRAINING
     models, thresholds = trainML(X, y_pciat, y, model)
 
+    # INFERENCE
+    y_train_preds = predictML(models, X=X, thresholds=None)
+
     return {
         'meanstd_values': meanstd_values,
         'imputer': imputer,
         'encoder': encoder,
         'models': models,
-        'thresholds': thresholds
+        'thresholds': thresholds,
+        'train_preds': y_train_preds
     }
 
 
+def predict_naive_pipeline(data_dir: Path, meanstd_values, imputer, encoder, models, thresholds):
+    # Load data
+    print("Load testing data...")
+    
+    test = load_csv_data(data_dir / "test.csv")
+    print(f"Test shape (loaded): {test.shape}")
+
+    # Clean data
+    test = clean_testcsv_data(test)
+    print(f"Test shape (after cleaning): {test.shape}")
+
+    # Make aggregate
+    test_agg = get_aggregated_pq_files(data_dir / 'series_test.parquet')
+    print(f"Test aggregate shape: {test_agg.shape}")
+
+    # Join aggregates with main data
+    test = merge_csv_pqagg_data(test, test_agg)
+    print(f"Test shape (after joining): {test.shape}")
+
+    # INFERENCE
+    test, _ = preXY_FE(test, is_training=False, meanstd_values=meanstd_values)
+    X_test, _, _ = postXY_FE(test, is_training=False, imputer=imputer, encoder=encoder)
+    y_pred_test = predictML(models, X=X_test, thresholds=thresholds)
+    print("Inference completed!")
+
+    return y_pred_test
+
+
+def run_naive_pipeline(data_dir: Path):
+    artifacts = train_naive_pipeline(data_dir)
+
+    output = predict_naive_pipeline(
+        data_dir=data_dir,
+        meanstd_values=artifacts['meanstd_values'],
+        imputer=artifacts['imputer'],
+        encoder=artifacts['encoder'],
+        models=artifacts['models'],
+        thresholds=artifacts['thresholds']
+    )
+
+    return output
