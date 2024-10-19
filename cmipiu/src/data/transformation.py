@@ -2,6 +2,8 @@
 This module is responsible for all functions for feature engineering
 """
 
+from concurrent.futures import ThreadPoolExecutor
+
 import polars as pl
 import polars.selectors as cs
 from tqdm import tqdm
@@ -159,6 +161,8 @@ def aggregate_pq_files_v3(files):
     
     def make_feature_exps(col):
         return [
+            pl.col(col).min().alias(f'{col}_min'),
+            pl.col(col).max().alias(f'{col}_max'),
             pl.col(col).mean().alias(f'{col}_mean'),
             pl.col(col).std().alias(f'{col}_std'),
         ] + [pl.col(col).quantile(q).alias(f'{col}_{q}') for q in [0.25,0.5,0.75]]
@@ -172,16 +176,22 @@ def aggregate_pq_files_v3(files):
         )
 
         result_df = df.group_by('id').agg(
-            pl.col('relative_date_PCIAT').min().alias('relative_start_date_PCIAT'),
-            (pl.col('relative_date_PCIAT').max() - pl.col('relative_date_PCIAT').min()).alias('total_days'),
             pl.col('non-wear_flag').mean().alias('non-wear_flag_mean'),
             pl.col('non-wear_flag').std().alias('non-wear_flag_std'),
+            pl.col('quarter').mean().alias('quarter_mean'),
+            pl.col('weekday').mean().alias('weekday_mean'),
+            pl.col('weekday').std().alias('weekday_std'),
+            pl.col('day').mean().alias('day_mean'),
+            pl.col('day').std().alias('day_std'),
+            pl.col('time_diff').max().alias('time_diff_max'),
             *make_feature_exps('X'),
             *make_feature_exps('Y'),
-            *make_feature_exps('anglez'),
+            *make_feature_exps('Z'),
             *make_feature_exps('enmo'),
             *make_feature_exps('light'),
-            *make_feature_exps('rolling_std_anglez')
+            *make_feature_exps('rolling_std_anglez'),
+            *make_feature_exps('relative_date_PCIAT'),
+            *make_feature_exps('time_of_day'),
         )
 
         result_df = result_df.join(
@@ -190,9 +200,6 @@ def aggregate_pq_files_v3(files):
                 pl.col('daily_avg_enmo').mean().alias('daily_avg_enmo_mean'),
                 pl.col('daily_avg_enmo').std().alias('daily_avg_enmo_std'),
                 pl.col('daily_avg_enmo').max().alias('daily_avg_enmo_max'),
-                pl.col('daily_avg_light').min().alias('daily_avg_light_min'),
-                pl.col('daily_avg_light').mean().alias('daily_avg_light_mean'),
-                pl.col('daily_avg_light').std().alias('daily_avg_light_std'),
                 pl.col('daily_avg_light').max().alias('daily_avg_light_max'),
             ),
             on='id',
@@ -229,6 +236,23 @@ def aggregate_pq_files_v3(files):
 
     # Filter out days having total days <= 0
     aggdf = aggdf.filter(
-        pl.col('total_days')>0
+        (pl.col('relative_date_PCIAT_max') - pl.col('relative_date_PCIAT_min'))>0
     )
     return aggdf
+
+
+def process_file(filename):
+    df = pl.read_parquet(filename/'part-0.parquet')
+    df = df.drop('step').describe().drop('statistic')
+    return df.to_numpy().flatten(), filename.name.removeprefix('id=')
+
+
+def load_time_series(ids) -> pl.DataFrame:
+    with ThreadPoolExecutor() as executor:
+        results = list(tqdm(executor.map(lambda fname: process_file(fname), ids), total=len(ids)))
+    
+    stats, indexes = zip(*results)
+    df = pl.DataFrame(stats, schema=[f"stat_{i}" for i in range(len(stats[0]))], orient="row")
+    df = df.with_columns(pl.Series('id', indexes))
+    
+    return df

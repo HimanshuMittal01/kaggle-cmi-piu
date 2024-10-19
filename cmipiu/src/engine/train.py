@@ -13,6 +13,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 
 from cmipiu.src.engine.engine import AutoEncoder
 from cmipiu.src.engine.metrics import roundoff, quadratic_weighted_kappa, evaluate
+from cmipiu.src.config import config
 
 def trainML(X, y_pciat, y, model):
     skf = StratifiedKFold()
@@ -23,12 +24,15 @@ def trainML(X, y_pciat, y, model):
     models = []
     for fold, (tridx, validx) in enumerate(skf.split(X, y)):
         model_ = model.clone()
-        model_.fit(X[tridx].to_numpy(), y_pciat[tridx].to_numpy().ravel())
+        if config.use_pciat:
+            model_.fit(X[tridx].to_numpy(), y_pciat[tridx].to_numpy().ravel())
+        else:
+            model_.fit(X[tridx].to_numpy(), y[tridx].to_numpy().ravel())
         models.append(model_)
         
         y_pred = model_.predict(X[validx].to_numpy())
         oof_raw[validx] = y_pred
-        y_pred = roundoff(y_pred, thresholds=[30, 50, 80])
+        y_pred = roundoff(y_pred, thresholds=config.init_thresholds)
         oof[validx] = y_pred
 
         score = quadratic_weighted_kappa(y[validx].to_numpy().ravel(), y_pred)
@@ -42,7 +46,7 @@ def trainML(X, y_pciat, y, model):
     score = quadratic_weighted_kappa(y, oof)
     print(f"OOF score: {score}")
 
-    thresholds = minimize(evaluate, [30, 50, 80], args=(y, oof_raw), method='Nelder-Mead').x
+    thresholds = minimize(evaluate, config.init_thresholds, args=(y, oof_raw), method='Nelder-Mead').x
     print('Thresholds', thresholds)
 
     y_pred_tuned = roundoff(oof_raw, thresholds=thresholds)
@@ -52,7 +56,7 @@ def trainML(X, y_pciat, y, model):
     print("OOF Confusion matrix:")
     print(confusion_matrix(y, y_pred_tuned))
 
-    return models, thresholds
+    return models, thresholds, oof_raw
 
 
 def trainAutoEncoder(df, encoding_dim=50, epochs=100, learning_rate=0.001):

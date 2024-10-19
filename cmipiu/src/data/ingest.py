@@ -41,6 +41,7 @@ def clean_testcsv_data(df):
 def get_aggregated_pq_files(dir):
     files = [file for file in dir.iterdir()]
     train_agg = aggregate_pq_files_v3(files)
+    # train_agg = load_time_series(files)
     return train_agg
 
 
@@ -71,4 +72,3 @@ def autoencode(df, autoencoder=None, agg_mean=None, agg_std=None):
 
 def merge_csv_pqagg_data(df_csv, df_pqagg):
     return df_csv.join(df_pqagg, how='left', on='id')
-

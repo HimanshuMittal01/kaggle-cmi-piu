@@ -35,7 +35,7 @@ def preXY_FE(df, is_training=False, meanstd_values=None):
     
     def make_tvalues(df):
         return df.with_columns(
-            [((pl.col(col) - pl.col(f'm{col}')) / pl.col(f's{col}')).alias(f't{col}') for col in cols_to_transform]
+            [((pl.col(col) - pl.col(f'm{col}')) / (pl.col(f's{col}') + 1e-7)).alias(f't{col}') for col in cols_to_transform]
         )
     
     df = (
@@ -79,14 +79,26 @@ def postXY_FE(df, is_training=False, imputer=None, encoder=None):
         )
         .then((pl.col('PAQ_C-PAQ_C_Total').fill_null(0) + pl.col('PAQ_A-PAQ_A_Total').fill_null(0))/2)
         .otherwise(pl.lit(None)),
-        Fitness_Endurance_Duration = pl.col('Fitness_Endurance-Time_Mins') * 60 + pl.col('Fitness_Endurance-Time_Sec')
+        Fitness_Endurance_Duration = pl.col('Fitness_Endurance-Time_Mins') * 60 + pl.col('Fitness_Endurance-Time_Sec'),
+    )
+    
+    # Create interaction features
+    df = df.with_columns(
+        (pl.col('Physical-BMI') * pl.col('Basic_Demos-Age')).alias('BMI_Age'),
+        (pl.col('PreInt_EduHx-computerinternet_hoursday') * pl.col('Basic_Demos-Age')).alias('Internet_Hours_Age'),
+        (pl.col('Physical-BMI') * pl.col('PreInt_EduHx-computerinternet_hoursday')).alias('BMI_Internet_Hours'),
     )
     
     # Remove all season and pciat cols
     pciat_cols = [col for col in df.columns if col.startswith('PCIAT')]
-    df = df.drop(pciat_cols + ['id',
-                  'PAQ_C-PAQ_C_Total', 'PAQ_A-PAQ_A_Total', 'Fitness_Endurance-Time_Mins', 
-                  'Fitness_Endurance-Time_Sec'])
+    df = df.drop(
+        pciat_cols + [
+            'id', 'BIA-Season', 'Basic_Demos-Enroll_Season', 
+            'CGAS-Season', 'SDS-Season', 'PAQ_A-Season', 'FGC-Season',
+            'PAQ_C-PAQ_C_Total', 'PAQ_A-PAQ_A_Total', 'Fitness_Endurance-Time_Mins', 
+            'Fitness_Endurance-Time_Sec'
+        ]
+    )
     
     # Encode season columns
     season_cols = [col for col in df.columns if col.endswith('Season')]
@@ -117,14 +129,14 @@ def postXY_FE(df, is_training=False, imputer=None, encoder=None):
     ]
     if is_training:
         imputer = KNNImputer(n_neighbors=10)
-        res = imputer.fit_transform(df[imputing_cols])
+        # res = imputer.fit_transform(df[imputing_cols])
     else:
         assert imputer is not None
-        res = imputer.transform(df[imputing_cols])
+        # res = imputer.transform(df[imputing_cols])
     
-    df = df.drop(imputing_cols)
-    imputed_df = pl.DataFrame(res, schema=list(imputer.get_feature_names_out()), orient="row")
-    df = pl.concat([df, imputed_df], how="horizontal")
+#     df = df.drop(imputing_cols)
+#     imputed_df = pl.DataFrame(res, schema=list(imputer.get_feature_names_out()), orient="row")
+#     df = pl.concat([df, imputed_df], how="horizontal")
     
     if is_training:
         return df, imputer, encoder

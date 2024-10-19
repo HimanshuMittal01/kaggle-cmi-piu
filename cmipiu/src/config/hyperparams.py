@@ -21,13 +21,13 @@ def add_hyperparameters(config):
                 'verbose': -1
             }
         },
-        # {
-        #     'name': 'rf1',
-        #     'model_class': 'RandomForestRegressor',
-        #     'params': {
-        #         'random_state': 42,
-        #     }
-        # },
+    #     {
+    #         'name': 'rf1',
+    #         'model_class': 'RandomForestRegressor',
+    #         'params': {
+    #             'random_state': 42,
+    #         }
+    #     },
         {
             'name': 'catb1',
             'model_class': 'CatBoostRegressor',
