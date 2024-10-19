@@ -87,6 +87,18 @@ def postXY_FE(df, is_training=False, imputer=None, encoder=None):
         (pl.col('Physical-BMI') * pl.col('Basic_Demos-Age')).alias('BMI_Age'),
         (pl.col('PreInt_EduHx-computerinternet_hoursday') * pl.col('Basic_Demos-Age')).alias('Internet_Hours_Age'),
         (pl.col('Physical-BMI') * pl.col('PreInt_EduHx-computerinternet_hoursday')).alias('BMI_Internet_Hours'),
+        (pl.col('BIA-BIA_Fat') / pl.col('BIA-BIA_BMI')).alias('BFP_BMI'),
+        (pl.col('BIA-BIA_FFMI') / pl.col('BIA-BIA_Fat')).alias('FFMI_BFP'),
+        (pl.col('BIA-BIA_FMI') / pl.col('BIA-BIA_Fat')).alias('FMI_BFP'),
+        (pl.col('BIA-BIA_LST') / pl.col('BIA-BIA_TBW')).alias('LST_TBW'),
+        (pl.col('BIA-BIA_Fat') * pl.col('BIA-BIA_BMR')).alias('BFP_BMR'),
+        (pl.col('BIA-BIA_Fat') * pl.col('BIA-BIA_DEE')).alias('BFP_DEE'),
+        (pl.col('BIA-BIA_BMR') / pl.col('Physical-Weight')).alias('BMR_Weight'),
+        (pl.col('BIA-BIA_DEE') / pl.col('Physical-Weight')).alias('DEE_Weight'),
+        (pl.col('BIA-BIA_SMM') / pl.col('Physical-Height')).alias('SMM_Height'),
+        (pl.col('BIA-BIA_SMM') / pl.col('BIA-BIA_FMI')).alias('Muscle_to_Fat'),
+        (pl.col('BIA-BIA_TBW') / pl.col('Physical-Weight')).alias('Hydration_Status'),
+        (pl.col('BIA-BIA_ICW') / pl.col('BIA-BIA_TBW')).alias('ICW_TBW'),
     )
     
     # Remove all season and pciat cols
