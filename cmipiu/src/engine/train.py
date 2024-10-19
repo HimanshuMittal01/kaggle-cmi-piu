@@ -76,11 +76,11 @@ def trainAutoEncoder(df, encoding_dim=50, epochs=100, learning_rate=0.001):
         running_loss = 0.0
 
         # Forward pass
+        optimizer.zero_grad()
         outputs = autoencoder(inputs)
         loss = criterion(outputs, inputs)
         
         # Backward pass and optimization
-        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         

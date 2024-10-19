@@ -4,7 +4,7 @@ Main module containing prefect workflows
 
 from pathlib import Path
 
-from cmipiu.api.flows import end_to_end_run
+from cmipiu import end_to_end_run
 
 if __name__ == '__main__':
     DATA_DIR = Path("input/child-mind-institute-problematic-internet-use/")
