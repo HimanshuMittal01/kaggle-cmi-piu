@@ -6,7 +6,7 @@ import polars as pl
 
 from cmipiu.src.data.clean import (
     handle_zero_weight_bmi,
-    make_extreme_outliers_null,
+    handle_outliers,
     filter_irrelevant_data,
     fix_target
 )
@@ -23,7 +23,7 @@ def clean_traincsv_data(df, pq_train_dirpath):
     df = (
         df
         .pipe(handle_zero_weight_bmi)
-        .pipe(make_extreme_outliers_null)
+        .pipe(handle_outliers)
         .pipe(filter_irrelevant_data, pq_train_dirpath=pq_train_dirpath)
         .pipe(fix_target)
     )
