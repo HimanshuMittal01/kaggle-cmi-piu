@@ -2,6 +2,7 @@
 Module responsible for feature engineering
 """
 
+import numpy as np
 import polars as pl
 
 from sklearn.preprocessing import OrdinalEncoder
@@ -71,17 +72,39 @@ def makeXY(df):
 
 
 def postXY_FE(df, is_training=False, imputer=None, encoder=None):
+    # Categorical bin CGAS Score
     df = df.with_columns(
         (pl.col('CGAS-CGAS_Score') // 5).alias('CGAS-CGAS_Score'),
+        
+    )
+
+    # Add missing indicator for waist circumference
+    df = df.with_columns(
         (pl.col('Physical-Waist_Circumference').is_null().alias('missingindicator_Waist_Circumference')),
+    )
+    
+    # Impute Waist Circumference
+    df = df.with_columns(
+        pl.when(
+            pl.col('Physical-Waist_Circumference').is_null()
+        )
+        .then(pl.col('Physical-BMI') * 1.2 + np.random.randn())
+        .otherwise(pl.col('Physical-Waist_Circumference'))
+        .alias('Physical-Waist_Circumference')
+    )
+
+    # Make PAQ Total column
+    df = df.with_columns(
         PAQ_Total = pl.when(
-            (pl.col('PAQ_C-PAQ_C_Total').is_null()) | (pl.col('PAQ_A-PAQ_A_Total').is_null())
+            (pl.col('PAQ_C-PAQ_C_Total').is_not_null()) | (pl.col('PAQ_A-PAQ_A_Total').is_not_null())
         )
         .then((pl.col('PAQ_C-PAQ_C_Total').fill_null(0) + pl.col('PAQ_A-PAQ_A_Total').fill_null(0))/2)
         .otherwise(pl.lit(None)),
-        Fitness_Endurance_Duration = pl.col('Fitness_Endurance-Time_Mins') * 60 + pl.col('Fitness_Endurance-Time_Sec'),
     )
     
+    # Add PAQ_A-Season to PAQ_C-Season and remove PAQ_A-Season later
+    df = df.with_columns(pl.when(pl.col('PAQ_C-Season').is_null()).then(pl.col('PAQ_A-Season')).otherwise(pl.col('PAQ_C-Season')))
+
     # Create interaction features
     df = df.with_columns(
         (pl.col('Physical-BMI') * pl.col('Basic_Demos-Age')).alias('BMI_Age'),
@@ -103,12 +126,12 @@ def postXY_FE(df, is_training=False, imputer=None, encoder=None):
     
     # Remove all season and pciat cols
     pciat_cols = [col for col in df.columns if col.startswith('PCIAT')]
+    df = df.drop(pciat_cols + ['id', 'PAQ_C-PAQ_C_Total', 'PAQ_A-PAQ_A_Total'])
     df = df.drop(
-        pciat_cols + [
-            'id', 'BIA-Season', 'Basic_Demos-Enroll_Season', 
+        [
+            'BIA-Season', 'Basic_Demos-Enroll_Season', 
             'CGAS-Season', 'SDS-Season', 'PAQ_A-Season', 'FGC-Season',
-            'PAQ_C-PAQ_C_Total', 'PAQ_A-PAQ_A_Total', 'Fitness_Endurance-Time_Mins', 
-            'Fitness_Endurance-Time_Sec'
+            'Fitness_Endurance-Time_Sec', 'BIA-BIA_FFM', 'Physical-BMI'
         ]
     )
     
