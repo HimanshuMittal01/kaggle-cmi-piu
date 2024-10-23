@@ -1,5 +1,7 @@
-# Data
+# Data and Logs
 input/
+mlruns/
+mlartifacts/
 
 # Notebooks
 notebooks/**/*.ipynb

@@ -5,11 +5,12 @@ Module for training functions
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import mlflow
 import numpy as np
 import polars as pl
 from scipy.optimize import minimize
 from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.metrics import accuracy_score, ConfusionMatrixDisplay
 
 from cmipiu.src.engine.engine import AutoEncoder
 from cmipiu.src.engine.metrics import roundoff, quadratic_weighted_kappa, evaluate
@@ -42,19 +43,23 @@ def trainML(X, y_pciat, y, model):
         print(f"Fold: {fold}, Score: {score:.6f}, Accuracy: {accuracy:.6f}")
         print("-"*40)
 
-    print(f"Mean score: {np.mean(scores)}")
-    score = quadratic_weighted_kappa(y, oof)
-    print(f"OOF score: {score}")
+    mean_cv_score = np.mean(scores)
+    oof_score = quadratic_weighted_kappa(y, oof)
 
     thresholds = minimize(evaluate, config.init_thresholds, args=(y, oof_raw), method='Nelder-Mead').x
-    print('Thresholds', thresholds)
-
     y_pred_tuned = roundoff(oof_raw, thresholds=thresholds)
-    print("Tuned OOF Score:", quadratic_weighted_kappa(y, y_pred_tuned))
 
-    print("OOF Accuracy:", accuracy_score(y, y_pred_tuned))
-    print("OOF Confusion matrix:")
-    print(confusion_matrix(y, y_pred_tuned))
+    tuned_oof_score = quadratic_weighted_kappa(y, y_pred_tuned)
+    tuned_oof_accuracy = accuracy_score(y, y_pred_tuned)
+    tuned_off_cm  = ConfusionMatrixDisplay.from_predictions(y, y_pred_tuned)
+
+    with mlflow.start_run():
+        mlflow.log_metric('Mean CV Score', mean_cv_score)
+        mlflow.log_metric('OOF Score', oof_score)
+        mlflow.log_dict({'threholds': list(thresholds)}, 'thresholds.json')
+        mlflow.log_metric('Tuned OOF Score', tuned_oof_score)
+        mlflow.log_metric('Tuned OOF Accuracy', tuned_oof_accuracy)
+        mlflow.log_figure(tuned_off_cm.figure_, 'tuned_off_cm.png')
 
     return models, thresholds, oof_raw
 
