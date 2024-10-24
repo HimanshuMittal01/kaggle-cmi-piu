@@ -7,7 +7,7 @@ import numpy as np
 import polars as pl
 
 from sklearn.metrics import accuracy_score, confusion_matrix
-from cmipiu.src.engine.metrics import roundoff, quadratic_weighted_kappa
+from cmipiu.engine.metrics import roundoff, quadratic_weighted_kappa
 
 def predictML(models, X, y=None, thresholds=None):
     y_preds = np.zeros((len(X), len(models)))

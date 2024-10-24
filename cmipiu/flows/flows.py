@@ -1,21 +1,19 @@
 """
-Module for prefect flows
+Module for flows
 """
 
 from pathlib import Path
 
-from prefect import flow
-
-from cmipiu.src.data.ingest import (
+from cmipiu.data.ingest import (
     load_csv_data,
     clean_traincsv_data,
     clean_testcsv_data,
     get_aggregated_pq_files,
 )
 
-from cmipiu.src.engine.metrics import find_coeffs
-from cmipiu.src.engine.predict import predictLevel1
-from cmipiu.src.engine.pipeline import (
+from cmipiu.engine.metrics import find_coeffs
+from cmipiu.engine.predict import predictLevel1
+from cmipiu.engine.pipeline import (
     train_autoencoder_pipeline,
     train_ensemble_pipeline,
     train_naive_pipeline,

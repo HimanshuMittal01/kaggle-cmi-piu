@@ -2,7 +2,6 @@
 Module containing core algorithm and models
 """
 
-import torch
 import torch.nn as nn
 import numpy as np
 import xgboost as xgb

@@ -4,7 +4,7 @@ Always use this package for importing config in other modules
 
 from argparse import Namespace
 
-from cmipiu.src.config.hyperparams import add_hyperparameters
+from cmipiu.config.hyperparams import add_hyperparameters
 
 __all__ = [
     'config'

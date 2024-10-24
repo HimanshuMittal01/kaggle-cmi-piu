@@ -1,5 +1,8 @@
 # Data and Logs
 input/
+
+# Runs and artifacts
+.metaflow/
 mlruns/
 mlartifacts/
 

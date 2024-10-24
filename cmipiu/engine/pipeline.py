@@ -2,20 +2,20 @@
 Module responsible for workflows
 """
 
-from cmipiu.src.data.ingest import (
+from cmipiu.data.ingest import (
     autoencode,
     merge_csv_pqagg_data
 )
-from cmipiu.src.data.features import (
+from cmipiu.data.features import (
     preXY_FE,
     makeXY,
     postXY_FE,
     select_features
 )
-from cmipiu.src.engine.engine import EnsembleModel
-from cmipiu.src.engine.train import trainML
-from cmipiu.src.engine.predict import predictML
-from cmipiu.src.config import config
+from cmipiu.engine.engine import EnsembleModel
+from cmipiu.engine.train import trainML
+from cmipiu.engine.predict import predictML
+from cmipiu.config import config
 
 
 def train_autoencoder_pipeline(train, train_agg):

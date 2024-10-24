@@ -7,7 +7,7 @@ import numpy as np
 from sklearn.metrics import cohen_kappa_score
 from scipy.optimize import minimize
 
-from cmipiu.src.config import config
+from cmipiu.config import config
 
 
 def quadratic_weighted_kappa(y_true, y_pred):

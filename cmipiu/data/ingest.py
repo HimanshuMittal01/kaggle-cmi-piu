@@ -4,15 +4,15 @@ Module that defines data ingestion tasks
 
 import polars as pl
 
-from cmipiu.src.data.clean import (
+from cmipiu.data.clean import (
     handle_zero_weight_bmi,
     handle_outliers,
     filter_irrelevant_data,
     fix_target
 )
-from cmipiu.src.data.transformation import aggregate_pq_files_v3
-from cmipiu.src.engine.predict import predictAutoEncoder
-from cmipiu.src.engine.train import trainAutoEncoder
+from cmipiu.data.transformation import aggregate_pq_files_v3
+from cmipiu.engine.predict import predictAutoEncoder
+from cmipiu.engine.train import trainAutoEncoder
 
 def load_csv_data(path):
     df = pl.read_csv(path)

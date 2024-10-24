@@ -1,16 +1,37 @@
 """
-Main module containing prefect workflows
+Main module containing commands
 """
 
 from pathlib import Path
 
-import mlflow
+import typer
+from metaflow import Runner
 
-from cmipiu import end_to_end_run
+from cmipiu.flows.flows import end_to_end_run
 
-mlflow.set_tracking_uri("http://127.0.0.1:5000")
-mlflow.set_experiment("end-to-end-pipeline")
+app = typer.Typer()
 
-if __name__ == '__main__':
+@app.command()
+def hello():
+    with Runner('cmipiu/flows.py').run() as running:
+        print(f'{running.run} completed')
+
+@app.command()
+def train_autoencoder_ensemble():
+    print("Training Autoencoder Ensemble...")
+
+@app.command()
+def train_plain_ensemble():
+    print("Training Plain Ensemble...")
+
+@app.command()
+def train_naive_ensemble():
+    print("Training Naive Ensemble...")
+
+@app.command()
+def run_end_to_end():
     DATA_DIR = Path("input/child-mind-institute-problematic-internet-use/")
     y_test_pred = end_to_end_run(DATA_DIR)
+
+if __name__ == '__main__':
+    app()

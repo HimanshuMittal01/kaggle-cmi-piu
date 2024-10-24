@@ -6,7 +6,8 @@ tqdm
 altair
 vegafusion[embed]
 mkdocs
-prefect
+metaflow
+typer
 
 # Modeling
 lightgbm
