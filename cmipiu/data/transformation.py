@@ -8,6 +8,7 @@ import polars as pl
 import polars.selectors as cs
 from tqdm import tqdm
 
+from cmipiu.utils.paths import show_progress
 
 def aggregate_pq_files(files, cols):
     def _agg_dfs(dfs):
@@ -23,21 +24,23 @@ def aggregate_pq_files(files, cols):
     aggs = []
     dfs = []
     curr_total = 0
-    for pqfile in tqdm(files, desc='Aggregating pq files'):
-        df = pl.scan_parquet(pqfile)
-        df = df.with_columns(pl.lit(pqfile.name.removeprefix('id=')).alias('id'))
-        dfs.append(df)
-        _len = df.select(pl.len()).collect().item()
-        curr_total += _len
-        
-        # Aggregate >3M rows together
-        if curr_total > 3e6:
-            agg = _agg_dfs(dfs)
-            aggs.append(agg)
+    print("Aggregating pq files..")
+    with show_progress():
+        for pqfile in tqdm(files):
+            df = pl.scan_parquet(pqfile)
+            df = df.with_columns(pl.lit(pqfile.name.removeprefix('id=')).alias('id'))
+            dfs.append(df)
+            _len = df.select(pl.len()).collect().item()
+            curr_total += _len
+            
+            # Aggregate >3M rows together
+            if curr_total > 3e6:
+                agg = _agg_dfs(dfs)
+                aggs.append(agg)
 
-            # reset
-            dfs = []
-            curr_total = 0
+                # reset
+                dfs = []
+                curr_total = 0
     if dfs:
         agg = _agg_dfs(dfs)
         aggs.append(agg)
@@ -130,21 +133,23 @@ def aggregate_pq_files_v2(files):
     aggs = []
     dfs = []
     curr_total = 0
-    for pqfile in tqdm(files, desc='Aggregating pq files'):
-        df = pl.scan_parquet(pqfile)
-        df = _add_info_to_df(df)
-        dfs.append(df)
-        _len = df.select(pl.len()).collect().item()
-        curr_total += _len
-        
-        # Aggregate >3M rows together
-        if curr_total > 3e6:
-            agg = _agg_dfs(dfs)
-            aggs.append(agg)
+    print("Aggregating pq files..")
+    with show_progress():
+        for pqfile in tqdm(files):
+            df = pl.scan_parquet(pqfile)
+            df = _add_info_to_df(df)
+            dfs.append(df)
+            _len = df.select(pl.len()).collect().item()
+            curr_total += _len
+            
+            # Aggregate >3M rows together
+            if curr_total > 3e6:
+                agg = _agg_dfs(dfs)
+                aggs.append(agg)
 
-            # reset
-            dfs = []
-            curr_total = 0
+                # reset
+                dfs = []
+                curr_total = 0
     if dfs:
         agg = _agg_dfs(dfs)
         aggs.append(agg)
@@ -213,21 +218,23 @@ def aggregate_pq_files_v3(files):
     aggs = []
     dfs = []
     curr_total = 0
-    for pqfile in tqdm(files, desc='Aggregating pq files'):
-        df = pl.scan_parquet(pqfile)
-        df = _add_info_to_df(df)
-        dfs.append(df)
-        _len = df.select(pl.len()).collect().item()
-        curr_total += _len
-        
-        # Aggregate >3M rows together
-        if curr_total > 3e6:
-            agg = _agg_dfs(dfs)
-            aggs.append(agg)
+    print("Aggregating pq files..")
+    with show_progress():
+        for pqfile in tqdm(files):
+            df = pl.scan_parquet(pqfile)
+            df = _add_info_to_df(df)
+            dfs.append(df)
+            _len = df.select(pl.len()).collect().item()
+            curr_total += _len
+            
+            # Aggregate >3M rows together
+            if curr_total > 3e6:
+                agg = _agg_dfs(dfs)
+                aggs.append(agg)
 
-            # reset
-            dfs = []
-            curr_total = 0
+                # reset
+                dfs = []
+                curr_total = 0
     if dfs:
         agg = _agg_dfs(dfs)
         aggs.append(agg)

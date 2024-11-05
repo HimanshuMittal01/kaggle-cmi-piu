@@ -4,7 +4,15 @@ Contains utility functions to handle file information
 
 from pathlib import Path
 
+import logging
 from tabulate import tabulate
+from tqdm.contrib.logging import tqdm_logging_redirect
+
+def show_progress():
+    tqdm_logger = logging.getLogger('tqdm')
+    tqdm_logger.setLevel(logging.INFO)
+    return tqdm_logging_redirect()
+
 
 def sizeof_fmt(num, suffix="B"):
     for unit in ("", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"):

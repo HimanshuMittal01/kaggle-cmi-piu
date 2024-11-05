@@ -11,8 +11,8 @@ from cmipiu.data.clean import (
     fix_target
 )
 from cmipiu.data.transformation import aggregate_pq_files_v3
-from cmipiu.engine.predict import predictAutoEncoder
-from cmipiu.engine.train import trainAutoEncoder
+from cmipiu.predict import predictAutoEncoder
+from cmipiu.train import trainAutoEncoder
 
 def load_csv_data(path):
     df = pl.read_csv(path)

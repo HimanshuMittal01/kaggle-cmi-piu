@@ -1,0 +1,22 @@
+---
+params:
+- name: xgb1
+  model_class: XGBRegressor
+  params:
+    verbosity: 0
+    random_state: 42
+- name: lgbm1
+  model_class: LGBMRegressor
+  params:
+    random_state: 42
+    verbose: -1
+- name: catb1
+  model_class: CatBoostRegressor
+  params:
+    silent: true
+    allow_writing_files: false
+    random_state: 42
+# - name: rf1
+#   model_class: RandomForestRegressor
+#   params:
+#     random_state: 42

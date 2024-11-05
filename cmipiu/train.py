@@ -11,11 +11,17 @@ from scipy.optimize import minimize
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay
 
-from cmipiu.engine.engine import AutoEncoder
-from cmipiu.engine.metrics import roundoff, quadratic_weighted_kappa, evaluate
-from cmipiu.config import config
+from cmipiu.engine.autoencoder import AutoEncoder
+from cmipiu.engine.ensemble import EnsembleModel
+from cmipiu.metrics import roundoff, quadratic_weighted_kappa, evaluate
 
-def trainML(X, y_pciat, y, model):
+def build_model(params):
+    model = EnsembleModel(params)
+    return model
+
+
+def train_and_evaluate_model_level1(X, y, model, init_thresholds):
+    # Perform CV
     skf = StratifiedKFold()
 
     scores = []
@@ -24,15 +30,12 @@ def trainML(X, y_pciat, y, model):
     models = []
     for fold, (tridx, validx) in enumerate(skf.split(X, y)):
         model_ = model.clone()
-        if config.use_pciat:
-            model_.fit(X[tridx].to_numpy(), y_pciat[tridx].to_numpy().ravel())
-        else:
-            model_.fit(X[tridx].to_numpy(), y[tridx].to_numpy().ravel())
+        model_.fit(X[tridx].to_numpy(), y[tridx].to_numpy().ravel())
         models.append(model_)
         
         y_pred = model_.predict(X[validx].to_numpy())
         oof_raw[validx] = y_pred
-        y_pred = roundoff(y_pred, thresholds=config.init_thresholds)
+        y_pred = roundoff(y_pred, thresholds=init_thresholds)
         oof[validx] = y_pred
 
         score = quadratic_weighted_kappa(y[validx].to_numpy().ravel(), y_pred)
@@ -41,40 +44,43 @@ def trainML(X, y_pciat, y, model):
         accuracy = accuracy_score(y[validx].to_numpy().ravel(), y_pred)
         print(f"Fold: {fold}, Score: {score:.6f}, Accuracy: {accuracy:.6f}")
         print("-"*40)
+    
+    # Evaluate on metrics
+    cv_mean_qwk_score = np.mean(scores)
+    cv_std_qwk_score = np.std(scores)
+    oof_score = quadratic_weighted_kappa(y, oof)
 
-    print(f"Mean score: {np.mean(scores)}")
-    score = quadratic_weighted_kappa(y, oof)
-    print(f"OOF score: {score}")
-
-    thresholds = minimize(evaluate, config.init_thresholds, args=(y, oof_raw), method='Nelder-Mead').x
-    print('Thresholds', thresholds)
-
+    thresholds = minimize(evaluate, init_thresholds, args=(y, oof_raw), method='Nelder-Mead').x
     y_pred_tuned = roundoff(oof_raw, thresholds=thresholds)
-    print("Tuned OOF Score:", quadratic_weighted_kappa(y, y_pred_tuned))
 
-    print("OOF Accuracy:", accuracy_score(y, y_pred_tuned))
-    print("OOF Confusion matrix:")
-    print(confusion_matrix(y, y_pred_tuned))
+    tuned_oof_score = quadratic_weighted_kappa(y, y_pred_tuned)
+    tuned_oof_accuracy = accuracy_score(y, y_pred_tuned)
+    tuned_off_cm  = ConfusionMatrixDisplay.from_predictions(y, y_pred_tuned).figure_
 
-    # mean_cv_score = np.mean(scores)
-    # oof_score = quadratic_weighted_kappa(y, oof)
+    evaluation_metrics = {
+        "CV Mean QWK Score": cv_mean_qwk_score,
+        "CV Std QWK Score": cv_std_qwk_score,
+        "OOF QWK Score": oof_score,
+        "Tuned OOF QWK Score": tuned_oof_score,
+        "Tuned OOF Accuracy": tuned_oof_accuracy,
+        "Tuned OOF Confusion Matrix": tuned_off_cm
+    }
 
-    # thresholds = minimize(evaluate, config.init_thresholds, args=(y, oof_raw), method='Nelder-Mead').x
-    # y_pred_tuned = roundoff(oof_raw, thresholds=thresholds)
+    # Retrain model on full dataset
+    # Or TODO: give an option  to make mean model of fold models
+    model.fit(X.to_numpy(), y.to_numpy().ravel())
+    
+    return {
+        'model': model,
+        'oof_raw': oof_raw,
+        'evaluation_metrics': evaluation_metrics,
+        'evaluation_strategy': 'StratifiedKFold (5)',
+        'model_strategy': 'retrain_on_full_dataset',
+    }
 
-    # tuned_oof_score = quadratic_weighted_kappa(y, y_pred_tuned)
-    # tuned_oof_accuracy = accuracy_score(y, y_pred_tuned)
-    # tuned_off_cm  = ConfusionMatrixDisplay.from_predictions(y, y_pred_tuned)
 
-    # with mlflow.start_run():
-    #     mlflow.log_metric('Mean CV Score', mean_cv_score)
-    #     mlflow.log_metric('OOF Score', oof_score)
-    #     mlflow.log_dict({'threholds': list(thresholds)}, 'thresholds.json')
-    #     mlflow.log_metric('Tuned OOF Score', tuned_oof_score)
-    #     mlflow.log_metric('Tuned OOF Accuracy', tuned_oof_accuracy)
-    #     mlflow.log_figure(tuned_off_cm.figure_, 'tuned_off_cm.png')
-
-    return models, thresholds, oof_raw
+def train_and_evaluate_model_level2(X, y, model=None, init_thresholds=[0.5, 1.5, 2.5]):
+    pass
 
 
 def trainAutoEncoder(df, encoding_dim=50, epochs=100, learning_rate=0.001):

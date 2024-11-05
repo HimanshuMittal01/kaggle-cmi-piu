@@ -7,8 +7,6 @@ import numpy as np
 from sklearn.metrics import cohen_kappa_score
 from scipy.optimize import minimize
 
-from cmipiu.config import config
-
 
 def quadratic_weighted_kappa(y_true, y_pred):
     return cohen_kappa_score(y_true, y_pred, weights='quadratic')
@@ -30,7 +28,7 @@ def evaluate_coeffs(x, y_true, y1, y2, y3):
     score = quadratic_weighted_kappa(y_true, roundoff(y_pred, thresholds))
     return -score
 
-def find_coeffs(y_true, oof_preds1, oof_preds2, oof_preds3):
+def find_coeffs(y_true, oof_preds1, oof_preds2, oof_preds3, init_thresholds):
     args = (
         y_true,
         oof_preds1,
@@ -40,9 +38,9 @@ def find_coeffs(y_true, oof_preds1, oof_preds2, oof_preds3):
 
     best_val = 0
     coeffs = [0.33, 0.33, 0.33]
-    thresholds = config.init_thresholds
+    thresholds = init_thresholds
     for it in range(100):
-        inix = [np.random.random() for _ in range(3)] + config.init_thresholds
+        inix = [np.random.random() for _ in range(3)] + init_thresholds
         res = minimize(
             evaluate_coeffs,
             inix,

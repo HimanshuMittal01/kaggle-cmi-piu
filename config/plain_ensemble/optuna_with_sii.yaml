@@ -1,0 +1,58 @@
+---
+params:
+- name: lgbm1
+  model_class: LGBMRegressor
+  params:
+    n_estimators: 500
+    learning_rate: 0.024
+    num_leaves: 1440
+    max_depth: 15
+    min_data_in_leaf: 50
+    lambda_l1: 25
+    lambda_l2: 20
+    bagging_fraction: 0.9
+    bagging_freq: 1
+    feature_fraction: 0.7
+    random_state: 42
+    verbose: -1
+- name: lgbm2
+  model_class: LGBMRegressor
+  params:
+    n_estimators: 1000
+    learning_rate: 0.018
+    num_leaves: 360
+    max_depth: 17
+    min_data_in_leaf: 45
+    lambda_l1: 30
+    lambda_l2: 80
+    bagging_fraction: 0.9
+    bagging_freq: 1
+    feature_fraction: 0.9
+    random_state: 42
+    verbose: -1
+- name: xgb1
+  model_class: XGBRegressor
+  params:
+    n_estimators: 1000
+    objective: reg:squarederror
+    learning_rate: 0.067
+    max_depth: 9
+    subsample: 0.808
+    colsample_bytree: 0.7
+    verbosity: 0
+    reg_alpha: 50
+    reg_lambda: 59
+    random_state: 42
+- name: xgb2
+  model_class: XGBRegressor
+  params:
+    n_estimators: 1000
+    objective: reg:squarederror
+    learning_rate: 0.0435
+    max_depth: 8
+    subsample: 0.849
+    colsample_bytree: 0.759
+    verbosity: 0
+    reg_alpha: 44
+    reg_lambda: 5
+    random_state: 42

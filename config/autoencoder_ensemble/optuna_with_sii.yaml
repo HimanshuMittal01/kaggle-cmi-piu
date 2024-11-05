@@ -1,0 +1,41 @@
+---
+params:
+- name: lgbm
+  model_class: LGBMRegressor
+  params:
+    n_estimators: 2000
+    learning_rate: 0.02
+    max_depth: 12
+    num_leaves: 1680
+    min_data_in_leaf: 46
+    lambda_l1: 20
+    lambda_l2: 75
+    bagging_fraction: 1
+    bagging_freq: 1
+    feature_fraction: 1
+    random_state: 42
+    verbose: -1
+- name: xgb
+  model_class: XGBRegressor
+  params:
+    n_estimators: 1000
+    learning_rate: 0.018
+    max_depth: 6
+    subsample: 0.89
+    colsample_bytree: 0.75
+    reg_alpha: 34
+    reg_lambda: 9
+    random_state: 42
+    verbosity: 0
+- name: catb
+  model_class: CatBoostRegressor
+  params:
+    learning_rate: 0.015
+    depth: 3
+    subsample: 0.69
+    colsample_bylevel: 0.565
+    min_data_in_leaf: 88
+    iterations: 400
+    verbose: 0
+    allow_writing_files: false
+    random_seed: 42

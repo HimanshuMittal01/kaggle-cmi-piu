@@ -1,0 +1,37 @@
+---
+autoencoder_ensemble:
+  fs: AutoencodedPQ
+  params_path: "config/autoencoder_ensemble/optuna_with_sii.yaml"
+  target_col: 'sii'
+  init_thresholds:
+  - 0.5
+  - 1.5
+  - 2.5
+  # params_path: "config/autoencoder_ensemble/optuna_with_pciat.yaml"
+  # init_thresholds:
+  # - 30
+  # - 50
+  # - 80
+
+plain_ensemble:
+  fs: Normal
+  params_path: "config/plain_ensemble/optuna_with_sii.yaml"
+  target_col: 'sii'
+  init_thresholds:
+  - 0.5
+  - 1.5
+  - 2.5
+  # params_path: "config/plain_ensemble/optuna_with_pciat.yaml"
+  # init_thresholds:
+  # - 30
+  # - 50
+  # - 80
+
+naive_ensemble:
+  fs: Normal
+  params_path: "config/naive_ensemble/default.yaml"
+  target_col: 'sii'
+  init_thresholds:
+  - 0.5
+  - 1.5
+  - 2.5
