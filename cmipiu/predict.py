@@ -3,17 +3,17 @@ Module containing inference code
 """
 
 import torch
-import numpy as np
 import polars as pl
 
 from sklearn.metrics import accuracy_score, confusion_matrix
 from cmipiu.metrics import roundoff, quadratic_weighted_kappa
 
+
 def predictML(model, X, y=None, thresholds=None):
     # y_preds = np.zeros((len(X), len(models)))
     # for i, model in enumerate(models):
     #     y_preds[:, i] = model.predict(X.to_numpy())
-    
+
     # y_pred = y_preds.mean(axis=1)
     y_pred = model.predict(X.to_numpy())
     if thresholds is not None:
