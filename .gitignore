@@ -1,7 +1,8 @@
-# Data and Logs
+# Data, Logs, Runs and artifacts
 input/
-
-# Runs and artifacts
+data/
+logs/
+.ruff_cache/
 .metaflow/
 mlruns/
 mlartifacts/

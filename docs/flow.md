@@ -5,12 +5,9 @@ flowchart TD
     B --> D[Join Data]
     C --> D[Join Data]
     D --> E[Split Feature Sets]
-    E --> F[Feature Set 1]
-    E --> G[Feature Set 2]
-    E --> H[Feature Set 3]
-    F --> I[Collect Feature Sets]
-    G --> I[Collect Feature Sets]
-    H --> I[Collect Feature Sets]
+    E --> F[Feature Set 1] --> I[Collect Feature Sets]
+    E --> G[Feature Set 2] --> I[Collect Feature Sets]
+    E --> H[Feature Set 3] --> I[Collect Feature Sets]
     I --> J[End]
 ```
 
@@ -24,4 +21,4 @@ flowchart TD
 It is recommended to define which dataset version(s) for the raw input are used in the `start` step.
 If storage/memory footprint is too high, then serialize and deserialize artifacts manually between the steps instead of using `.self` for versioning.
 
-Dataset | Train/Valid=
+Dataset | Train/Valid
