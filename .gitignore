@@ -6,6 +6,7 @@ logs/
 .metaflow/
 mlruns/
 mlartifacts/
+metaflow_card_cache/
 
 # Notebooks
 notebooks/**/*.ipynb
