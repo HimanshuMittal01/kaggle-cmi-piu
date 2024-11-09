@@ -4,6 +4,7 @@ Main module containing commands
 
 import typer
 from metaflow import Runner
+from rich import print
 
 app = typer.Typer()
 
