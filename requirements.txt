@@ -2,7 +2,6 @@
 polars
 scikit-learn
 tabulate
-tqdm
 altair
 vegafusion[embed]
 mkdocs
