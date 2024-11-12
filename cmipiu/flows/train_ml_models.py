@@ -6,7 +6,7 @@ import yaml
 
 from metaflow import FlowSpec, Flow, Run, step, Parameter, IncludeFile, card
 
-from cmipiu.flows._common import ModelLevel0
+from cmipiu._common import ModelLevel0
 from cmipiu.train import build_model, train_and_evaluate_model_level1
 from cmipiu.metrics import find_coeffs
 

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from metaflow import FlowSpec, Flow, Run, step
 
-from cmipiu.flows._common import FeatureEngineeringSet
+from cmipiu._common import FeatureEngineeringSet
 from cmipiu.data.ingest import (
     load_csv_data,
     clean_testcsv_data,

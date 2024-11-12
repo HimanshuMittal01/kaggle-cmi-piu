@@ -1,12 +1,23 @@
 from metaflow import FlowSpec, Flow, Run, step
 
-from cmipiu.flows._common import ModelLevel0
+from cmipiu._common import ModelLevel0
+from cmipiu.config import CustomLogger
 from cmipiu.predict import predictML, predictLevel1
 
 
 class PredictFlow(FlowSpec):
+    @property
+    def logger(self):
+        """
+        Get the logger for this class
+        """
+        logger = CustomLogger(name=self.__class__.__name__)
+        return logger
+
     @step
     def start(self):
+        self.logger.warning("My named is Khan")
+
         self.trainflow_runid = Flow("TrainFlow").latest_successful_run.id
         self.train_data_id1 = Run(
             f"TrainFlow/{self.trainflow_runid}"

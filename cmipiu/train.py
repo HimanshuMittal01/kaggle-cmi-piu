@@ -15,6 +15,10 @@ from cmipiu.engine.autoencoder import AutoEncoder
 from cmipiu.engine.ensemble import EnsembleModel
 from cmipiu.metrics import roundoff, quadratic_weighted_kappa, evaluate
 
+from cmipiu.config import CustomLogger
+
+logger = CustomLogger(name=__name__)
+
 
 def build_model(params):
     model = EnsembleModel(params)
@@ -43,8 +47,8 @@ def train_and_evaluate_model_level1(X, y, model, init_thresholds):
         scores.append(score)
 
         accuracy = accuracy_score(y[validx].to_numpy().ravel(), y_pred)
-        print(f"Fold: {fold}, Score: {score:.6f}, Accuracy: {accuracy:.6f}")
-        print("-" * 40)
+        logger.info(f"Fold: {fold}, Score: {score:.6f}, Accuracy: {accuracy:.6f}")
+        logger.info("-" * 40)
 
     # Evaluate on metrics
     cv_mean_qwk_score = np.mean(scores)
