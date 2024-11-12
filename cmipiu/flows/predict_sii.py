@@ -1,6 +1,6 @@
 from metaflow import FlowSpec, Flow, Run, step
 
-from cmipiu._common import ModelLevel0
+from cmipiu.common import ModelLevel0
 from cmipiu.config import CustomLogger
 from cmipiu.predict import predictML, predictLevel1
 
@@ -37,7 +37,9 @@ class PredictFlow(FlowSpec):
     @step
     def run_batch_inference(self):
         # Find optimal coeffs and thresholds
-        test_dataset = Run(f"ProcessTestData/{self.testdata_runid}").data.dataset
+        test_dataset = Run(
+            f"ProcessTestData/{self.testdata_runid}"
+        ).data.dataset
         trainflow = Run(f"TrainFlow/{self.trainflow_runid}").data
 
         # Make predictions
@@ -48,15 +50,15 @@ class PredictFlow(FlowSpec):
             X=test_dataset["AutoencodedPQ"]["df"],
         )
         y_pred2 = predictML(
-            model=trainflow.level1_training_results[ModelLevel0.PlainEnsemble.name][
-                "model"
-            ],
+            model=trainflow.level1_training_results[
+                ModelLevel0.PlainEnsemble.name
+            ]["model"],
             X=test_dataset["Normal"]["df"],
         )
         y_pred3 = predictML(
-            model=trainflow.level1_training_results[ModelLevel0.NaiveEnsemble.name][
-                "model"
-            ],
+            model=trainflow.level1_training_results[
+                ModelLevel0.NaiveEnsemble.name
+            ]["model"],
             X=test_dataset["Normal"]["df"],
         )
 

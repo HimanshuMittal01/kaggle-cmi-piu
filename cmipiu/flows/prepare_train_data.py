@@ -1,12 +1,15 @@
-"""
-Data Preprocessing Flow
+"""Metaflow FlowSpec implementation for preparation of the training data.
+
+MIT License (https://opensource.org/license/MIT)
+Copyright (c) 2024 Himanshu Mittal
 """
 
+import logging
 from pathlib import Path
 
 from metaflow import FlowSpec, step
 
-from cmipiu._common import FeatureEngineeringSet
+from cmipiu.common import FeatureEngineeringSet
 from cmipiu.data.ingest import (
     load_csv_data,
     clean_traincsv_data,
@@ -15,14 +18,21 @@ from cmipiu.data.ingest import (
     autoencode,
 )
 from cmipiu.data.features import feature_engineering, get_features
+from cmipiu.config import CustomLogger
 
 
 class ProcessTrainData(FlowSpec):
+    @property
+    def logger(self) -> logging.Logger:
+        """Logger for print statements within the step code."""
+        logger = CustomLogger(self.__class__.__name__)
+        return logger
+
     @step
     def start(self):
-        """
-        Start separate streams for loading csv and parquet data.
-        Using raw version from the kaggle competition CMI-PIU 2024.
+        """Branch step - separate csv and parquet data.
+
+        Use raw version from the kaggle competition CMI-PIU 2024.
         """
         self.data_version = "child-mind-institute-problematic-internet-use/"
         self.data_dir = Path("input/raw/") / self.data_version
@@ -30,40 +40,45 @@ class ProcessTrainData(FlowSpec):
 
     @step
     def preprocess_csv(self):
-        """
-        Load and clean csv file
+        """Load and clean csv data.
+
+        It drop rows that have little to no information.
+        Note that this may not necessarily remove row where `sii` column is null.
         """
         # Load data
-        print("Load training data...")
+        self.logger.info("Load training data...")
         train = load_csv_data(self.data_dir / "train.csv")
-        print(f"Train csv shape (loaded): {train.shape}")
+        self.logger.info(f"Train csv shape (loaded): {train.shape}")
 
         # Clean data
         self.train = clean_traincsv_data(
             train, pq_train_dirpath=self.data_dir / "series_train.parquet"
         )
-        print(f"Train csv shape (after cleaning): {self.train.shape}")
+        self.logger.info(
+            f"Train csv shape (after cleaning): {self.train.shape}"
+        )
 
         self.next(self.join_csv_and_pq)
 
     @step
     def preprocess_pq(self):
-        """
-        Create aggregate features for parquet actigraph data
-        """
-        self.train_agg = get_aggregated_pq_files(self.data_dir / "series_train.parquet")
+        """Create aggregate features per user from the actigraph parquet data."""
+        self.train_agg = get_aggregated_pq_files(
+            self.data_dir / "series_train.parquet"
+        )
         print(f"Train pq aggregate shape: {self.train_agg.shape}")
 
         self.next(self.autoencode_pq)
 
     @step
     def autoencode_pq(self):
-        """
-        Autoencode aggregated parquet features
-        """
-        self.train_agg_encoded, self.autoencoder, self.agg_mean, self.agg_std = (
-            autoencode(self.train_agg)
-        )
+        """Autoencode the aggregated parquet features."""
+        (
+            self.train_agg_encoded,
+            self.autoencoder,
+            self.agg_mean,
+            self.agg_std,
+        ) = autoencode(self.train_agg)
         print(
             f"Train pq aggregate shape (after autoencoding): {self.train_agg_encoded.shape}"
         )
@@ -94,8 +109,12 @@ class ProcessTrainData(FlowSpec):
         """
         Split into parallel feature set creation
         """
-        self.feature_engineering_splits = list(FeatureEngineeringSet.__members__.keys())
-        self.next(self.feature_engineering, foreach="feature_engineering_splits")
+        self.feature_engineering_splits = list(
+            FeatureEngineeringSet.__members__.keys()
+        )
+        self.next(
+            self.feature_engineering, foreach="feature_engineering_splits"
+        )
 
     @step
     def feature_engineering(self):

@@ -6,7 +6,7 @@ import yaml
 
 from metaflow import FlowSpec, Flow, Run, step, Parameter, IncludeFile, card
 
-from cmipiu._common import ModelLevel0
+from cmipiu.common import ModelLevel0
 from cmipiu.train import build_model, train_and_evaluate_model_level1
 from cmipiu.metrics import find_coeffs
 
@@ -15,7 +15,9 @@ class TrainFlow(FlowSpec):
     train_config = IncludeFile("train_config_path", default="config/train.yaml")
     model_names = Parameter(
         "model_names",
-        default=",".join([model_name for model_name in ModelLevel0.__members__.keys()]),
+        default=",".join(
+            [model_name for model_name in ModelLevel0.__members__.keys()]
+        ),
         separator=",",
     )
 
@@ -30,9 +32,13 @@ class TrainFlow(FlowSpec):
         }
 
         for model_name in self.model_names:
-            assert model_name in self.train_parameters, f"Undefined model: {model_name}"
+            assert (
+                model_name in self.train_parameters
+            ), f"Undefined model: {model_name}"
 
-        self.processdata_runid = Flow("ProcessTrainData").latest_successful_run.id
+        self.processdata_runid = Flow(
+            "ProcessTrainData"
+        ).latest_successful_run.id
         self.next(self.train_model_level1, foreach="model_names")
 
     @card
@@ -49,7 +55,9 @@ class TrainFlow(FlowSpec):
             X=dataset["df"][dataset["features"]],
             y=dataset["df"][self.train_parameters[self.input]["target_col"]],
             model=model,
-            init_thresholds=self.train_parameters[self.input]["init_thresholds"],
+            init_thresholds=self.train_parameters[self.input][
+                "init_thresholds"
+            ],
         )
 
         self.next(self.join_all_models)
@@ -60,14 +68,18 @@ class TrainFlow(FlowSpec):
         for input in inputs:
             self.level1_training_results[input.input] = input.training_results
 
-        self.merge_artifacts(inputs, include=["processdata_runid", "train_parameters"])
+        self.merge_artifacts(
+            inputs, include=["processdata_runid", "train_parameters"]
+        )
         self.next(self.train_model_level2)
 
     @step
     def train_model_level2(self):
         level1_oof_preds = []
         for model_name in self.level1_training_results:
-            level1_oof_preds.append(self.level1_training_results[model_name]["oof_raw"])
+            level1_oof_preds.append(
+                self.level1_training_results[model_name]["oof_raw"]
+            )
 
         run = Run(f"ProcessTrainData/{self.processdata_runid}")
         dataset = run.data.dataset[self.train_parameters[model_name]["fs"]]

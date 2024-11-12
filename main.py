@@ -1,5 +1,15 @@
-"""
-Main module containing commands
+#!/usr/bin/env python3
+"""Entrypoint script to run flows and anything easily through commands.
+
+Usage example:
+
+```bash
+# Prepare training data
+python main.py prepare-train-data
+
+# Use --help to see all options
+python main.py --help
+```
 """
 
 import typer
@@ -11,30 +21,35 @@ app = typer.Typer()
 
 @app.command()
 def prepare_train_data():
+    """Run flow to prepare training data"""
     with Runner("cmipiu/flows/prepare_train_data.py").run() as running:
         print(f"{running.run} completed")
 
 
 @app.command()
 def prepare_test_data():
+    """Run flow to prepare testing data"""
     with Runner("cmipiu/flows/prepare_test_data.py").run() as running:
         print(f"{running.run} completed")
 
 
 @app.command()
 def train():
+    """Run flow to train all the models"""
     with Runner("cmipiu/flows/train_ml_models.py").run() as running:
         print(f"{running.run} completed")
 
 
 @app.command()
 def predict():
+    """Run inference flow"""
     with Runner("cmipiu/flows/predict_sii.py").run() as running:
         print(f"{running.run} completed")
 
 
 @app.command()
 def tune(model: str):
+    """Perform hypertuning on the given model"""
     if model.upper() == "LGBM_REG":
         with Runner("cmipiu/tuning/tune_lgbm_reg.py").run() as running:
             print(f"{running.run} completed")

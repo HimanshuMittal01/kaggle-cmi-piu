@@ -6,7 +6,7 @@ from pathlib import Path
 
 from metaflow import FlowSpec, Flow, Run, step
 
-from cmipiu._common import FeatureEngineeringSet
+from cmipiu.common import FeatureEngineeringSet
 from cmipiu.data.ingest import (
     load_csv_data,
     clean_testcsv_data,
@@ -25,7 +25,9 @@ class ProcessTestData(FlowSpec):
         """
         self.data_version = "child-mind-institute-problematic-internet-use/"
         self.data_dir = Path("input/raw/") / self.data_version
-        self.processdata_runid = Flow("ProcessTrainData").latest_successful_run.id
+        self.processdata_runid = Flow(
+            "ProcessTrainData"
+        ).latest_successful_run.id
         self.next(self.preprocess_csv, self.preprocess_pq)
 
     @step
@@ -50,7 +52,9 @@ class ProcessTestData(FlowSpec):
         Create aggregate features for parquet actigraph data
         """
         # Make aggregate
-        self.test_agg = get_aggregated_pq_files(self.data_dir / "series_test.parquet")
+        self.test_agg = get_aggregated_pq_files(
+            self.data_dir / "series_test.parquet"
+        )
         print(f"Test aggregate shape: {self.test_agg.shape}")
 
         self.next(self.autoencode_pq)
@@ -65,7 +69,9 @@ class ProcessTestData(FlowSpec):
             agg_mean=run.data.dataset["AutoencodedPQ"]["agg_mean"],
             agg_std=run.data.dataset["AutoencodedPQ"]["agg_std"],
         )
-        print(f"Test aggregate shape (after autoencoding): {self.test_agg.shape}")
+        print(
+            f"Test aggregate shape (after autoencoding): {self.test_agg.shape}"
+        )
 
         self.next(self.join_csv_and_pq)
 
@@ -86,8 +92,12 @@ class ProcessTestData(FlowSpec):
 
     @step
     def branch_feature_engineering(self):
-        self.feature_engineering_splits = list(FeatureEngineeringSet.__members__.keys())
-        self.next(self.feature_engineering, foreach="feature_engineering_splits")
+        self.feature_engineering_splits = list(
+            FeatureEngineeringSet.__members__.keys()
+        )
+        self.next(
+            self.feature_engineering, foreach="feature_engineering_splits"
+        )
 
     @step
     def feature_engineering(self):

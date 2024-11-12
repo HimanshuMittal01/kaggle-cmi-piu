@@ -17,10 +17,6 @@ Insights:
 - Using Fitness Duration theoritically sounds good but looks like only test mins would influence it.
 - Binning CGAS score is good because there are peaks at multiple of 5.
 
-Input --> Preprocess pipeline -> Train model pipeline --> Inference pipeline -> Must return ID
-
-Feature importance --> Trained model
-Analysis pipeline --> Predictions and Input
 
 Issues:
 - Print statements in parallel
@@ -37,3 +33,5 @@ This will enable colors in printing. The problem is that because we're running f
 
 
 support stdlibrary logging https://github.com/Netflix/metaflow/issues/180
+
+Adding CLI available options in `tune()` command
