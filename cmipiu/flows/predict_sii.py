@@ -44,21 +44,17 @@ class PredictFlow(FlowSpec):
 
         # Make predictions
         y_pred1 = predictML(
-            model=trainflow.level1_training_results[
-                ModelLevel0.AutoencoderEnsemble.name
-            ]["model"],
+            model=trainflow.results1[ModelLevel0.AutoencoderEnsemble.name][
+                "model"
+            ],
             X=test_dataset["AutoencodedPQ"]["df"],
         )
         y_pred2 = predictML(
-            model=trainflow.level1_training_results[
-                ModelLevel0.PlainEnsemble.name
-            ]["model"],
+            model=trainflow.results1[ModelLevel0.PlainEnsemble.name]["model"],
             X=test_dataset["Normal"]["df"],
         )
         y_pred3 = predictML(
-            model=trainflow.level1_training_results[
-                ModelLevel0.NaiveEnsemble.name
-            ]["model"],
+            model=trainflow.results1[ModelLevel0.NaiveEnsemble.name]["model"],
             X=test_dataset["Normal"]["df"],
         )
 
@@ -66,8 +62,8 @@ class PredictFlow(FlowSpec):
             oof_preds1=y_pred1,
             oof_preds2=y_pred2,
             oof_preds3=y_pred3,
-            coeffs=trainflow.level2_training_results["coeffs"],
-            thresholds=trainflow.level2_training_results["thresholds"],
+            coeffs=trainflow.results2["coeffs"],
+            thresholds=trainflow.results2["thresholds"],
         )
 
         self.next(self.end)

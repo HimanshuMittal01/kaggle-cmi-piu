@@ -4,10 +4,10 @@ MIT License (https://opensource.org/license/MIT)
 Copyright (c) 2024 Himanshu Mittal
 """
 
+import polars as pl
 from metaflow import FlowSpec, Flow, Run, step, Parameter, JSONType, card
 
-from cmipiu.train import build_model, train_and_evaluate_model_level1
-from cmipiu.metrics import find_coeffs
+from cmipiu.train import build_model1, train_and_evaluate1, train_and_evaluate2
 
 
 class TrainFlow(FlowSpec):
@@ -188,17 +188,19 @@ class TrainFlow(FlowSpec):
             "ProcessTrainData"
         ).latest_successful_run.id
         self.model_names = self.cfg["train_models"]
-        self.next(self.train_model_level1, foreach="model_names")
+        self.next(self.train_model1, foreach="model_names")
 
     @card
     @step
-    def train_model_level1(self):
+    def train_model1(self):
         """Build and train weights for each model."""
-        model = build_model(self.cfg[self.input]["params"])
+        # Initialize model from config parameters
+        model = build_model1(self.cfg[self.input]["params"])
 
+        # This performs CV evaluation and then retrain on the full dataset
         run = Run(f"ProcessTrainData/{self.processdata_runid}")
         dataset = run.data.dataset[self.cfg[self.input]["fs"]]
-        self.training_results = train_and_evaluate_model_level1(
+        self.results = train_and_evaluate1(
             X=dataset["df"][dataset["features"]],
             y=dataset["df"][self.cfg[self.input]["target_col"]],
             model=model,
@@ -209,58 +211,41 @@ class TrainFlow(FlowSpec):
 
     @step
     def join_all_models(self, inputs):
-        self.level1_training_results = {}
+        """Join step - Save training results of all models."""
+        self.results1 = {}
         for input in inputs:
-            self.level1_training_results[input.input] = input.training_results
+            self.results1[input.input] = input.results
 
         self.merge_artifacts(inputs, include=["processdata_runid"])
-        self.next(self.train_model_level2)
+        self.next(self.train_model2)
 
     @step
-    def train_model_level2(self):
-        level1_oof_preds = []
-        for model_name in self.level1_training_results:
-            level1_oof_preds.append(
-                self.level1_training_results[model_name]["oof_raw"]
-            )
+    def train_model2(self):
+        """Ensemble level 1 models using Linear Regression."""
+        # Concat three model predictions into a dataset
+        level1_oof_preds = {}
+        for model_name in self.results1:
+            level1_oof_preds[model_name] = self.results1[model_name]["oof_raw"]
+        df_oof_preds1 = pl.DataFrame(level1_oof_preds)
 
-        run = Run(f"ProcessTrainData/{self.processdata_runid}")
-        dataset = run.data.dataset[self.cfg[model_name]["fs"]]
-
+        # Train and Evaluate linear regressoin model
         # Final y_true must be 'sii' and init thresholds is also fixed
         # TODO: Data validation of target shape (for ensembling)
-        self.coeffs, self.thresholds = find_coeffs(
-            dataset["df"]["sii"], *level1_oof_preds, [0.5, 1.5, 2.5]
+        run = Run(f"ProcessTrainData/{self.processdata_runid}")
+        dataset = run.data.dataset[self.cfg[model_name]["fs"]]
+        y_true = dataset["df"]["sii"]
+        self.results = train_and_evaluate2(
+            X=df_oof_preds1, y=y_true, init_thresholds=[0.5, 1.5, 2.5]
         )
-
-        # Data checks
-        # print("Predicting OOF Level 1")
-        # predictLevel1(
-        #     oof_preds1=output1['oof_preds'],
-        #     oof_preds2=output2['oof_preds'],
-        #     oof_preds3=output3['oof_preds'],
-        #     coeffs=coeffs,
-        #     thresholds=thresholds,
-        #     y_true=y_true,
-        # )
-
-        # print("Predicting Train Level 1")
-        # predictLevel1(
-        #     oof_preds1=output1['train_preds'],
-        #     oof_preds2=output2['train_preds'],
-        #     oof_preds3=output3['train_preds'],
-        #     coeffs=coeffs,
-        #     thresholds=thresholds,
-        #     y_true=y_true,
-        # )
 
         self.next(self.end)
 
     @step
     def end(self):
-        self.level2_training_results = {
-            "coeffs": self.coeffs,
-            "thresholds": self.thresholds,
+        """End step - Save model and optimal threshold only for inference later."""
+        self.results2 = {
+            "model": self.results["model"],
+            "thresholds": self.results["thresholds"],
         }
 
 
