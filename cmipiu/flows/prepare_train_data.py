@@ -7,7 +7,7 @@ Copyright (c) 2024 Himanshu Mittal
 import logging
 from pathlib import Path
 
-from metaflow import FlowSpec, step
+from metaflow import FlowSpec, Parameter, step, JSONType
 
 from cmipiu.common import FeatureEngineeringSet
 from cmipiu.data.ingest import (
@@ -22,6 +22,18 @@ from cmipiu.config import CustomLogger
 
 
 class ProcessTrainData(FlowSpec):
+    cfg = Parameter(
+        "config",
+        default={
+            "autoencoder": {
+                "encoding_dim": 30,
+                "epochs": 100,
+                "learning_rate": 0.001,
+            }
+        },
+        type=JSONType,
+    )
+
     @property
     def logger(self) -> logging.Logger:
         """Logger for print statements within the step code."""
@@ -66,7 +78,7 @@ class ProcessTrainData(FlowSpec):
         self.train_agg = get_aggregated_pq_files(
             self.data_dir / "series_train.parquet"
         )
-        print(f"Train pq aggregate shape: {self.train_agg.shape}")
+        self.logger.info(f"Train pq aggregate shape: {self.train_agg.shape}")
 
         self.next(self.autoencode_pq)
 
@@ -78,8 +90,13 @@ class ProcessTrainData(FlowSpec):
             self.autoencoder,
             self.agg_mean,
             self.agg_std,
-        ) = autoencode(self.train_agg)
-        print(
+        ) = autoencode(
+            self.train_agg,
+            encoding_dim=self.cfg["autoencoder"]["encoding_dim"],
+            epochs=self.cfg["autoencoder"]["epochs"],
+            learning_rate=self.cfg["autoencoder"]["learning_rate"],
+        )
+        self.logger.info(
             f"Train pq aggregate shape (after autoencoding): {self.train_agg_encoded.shape}"
         )
 
@@ -87,9 +104,7 @@ class ProcessTrainData(FlowSpec):
 
     @step
     def join_csv_and_pq(self, inputs):
-        """
-        Merge both streams
-        """
+        """Join step - Merge csv and parquet streams."""
         self.merge_artifacts(inputs)
 
         # Join aggregates with csv data
@@ -106,9 +121,7 @@ class ProcessTrainData(FlowSpec):
 
     @step
     def branch_feature_engineering(self):
-        """
-        Split into parallel feature set creation
-        """
+        """Branch step - Create features parallely for non-autoencoded and autoencoded data."""
         self.feature_engineering_splits = list(
             FeatureEngineeringSet.__members__.keys()
         )
@@ -118,17 +131,15 @@ class ProcessTrainData(FlowSpec):
 
     @step
     def feature_engineering(self):
-        """
-        Perform feature engineering for each split.
-        """
+        """Perform feature engineering for each split."""
         # Prepare dataset for training
-        print(
+        self.logger.info(
             f"[{self.input}] Train shape (after joining): {self.train[self.input].shape}"
         )
         self.df, self.artifacts = feature_engineering(
             self.train[self.input], training=True
         )
-        print(
+        self.logger.info(
             f"[{self.input}] Train shape (after feature engineering): {self.df.shape}"
         )
 
@@ -139,9 +150,7 @@ class ProcessTrainData(FlowSpec):
 
     @step
     def join_feature_engineering(self, inputs):
-        """
-        Save feature dataset and artifacts with given set
-        """
+        """Join step - Save dataset and artifacts of each feature set."""
         self.dataset = {}
         for fs in inputs:
             self.dataset[fs.input] = {
@@ -162,7 +171,10 @@ class ProcessTrainData(FlowSpec):
 
     @step
     def end(self):
-        """End step (split into train and valid if applicable)"""
+        """End step
+
+        Split into train and valid if applicable. No split in this case.
+        """
         pass
 
 

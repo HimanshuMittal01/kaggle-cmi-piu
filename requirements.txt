@@ -1,12 +1,12 @@
 # Basic stack
 polars
 scikit-learn
-tabulate
 altair
 vegafusion[embed]
 mkdocs
 metaflow
 typer
+hydra-core
 
 # Modeling
 lightgbm

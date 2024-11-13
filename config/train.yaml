@@ -1,4 +1,9 @@
 ---
+autoencoder:
+  encoding_dim: 30
+  epochs: 100
+  learning_rate: 0.001
+
 autoencoder_ensemble:
   fs: AutoencodedPQ
   params_path: "config/autoencoder_ensemble/optuna_with_sii.yaml"
@@ -35,3 +40,6 @@ naive_ensemble:
   - 0.5
   - 1.5
   - 2.5
+
+tryxgb:
+  _target_: xgboost.XGBRegressor
