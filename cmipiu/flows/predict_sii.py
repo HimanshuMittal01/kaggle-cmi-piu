@@ -1,23 +1,29 @@
+"""Metaflow FlowSpec implementation for inference flow.
+
+MIT License (https://opensource.org/license/MIT)
+Copyright (c) 2024 Himanshu Mittal
+"""
+
+import logging
+
+import polars as pl
 from metaflow import FlowSpec, Flow, Run, step
 
 from cmipiu.common import ModelLevel0
 from cmipiu.config import CustomLogger
-from cmipiu.predict import predictML, predictLevel1
+from cmipiu.predict import predict1, predict2
 
 
 class PredictFlow(FlowSpec):
     @property
-    def logger(self):
-        """
-        Get the logger for this class
-        """
-        logger = CustomLogger(name=self.__class__.__name__)
+    def logger(self) -> logging.Logger:
+        """Logger for print statements within the step code."""
+        logger = CustomLogger(self.__class__.__name__)
         return logger
 
     @step
     def start(self):
-        self.logger.warning("My named is Khan")
-
+        """Start step - Load model and testing data from `TrainFlow` and `ProcessTestData`."""
         self.trainflow_runid = Flow("TrainFlow").latest_successful_run.id
         self.train_data_id1 = Run(
             f"TrainFlow/{self.trainflow_runid}"
@@ -36,33 +42,49 @@ class PredictFlow(FlowSpec):
 
     @step
     def run_batch_inference(self):
+        """Predict using final model.
+
+        First, predict using all three level 1 models.
+        """
         # Find optimal coeffs and thresholds
         test_dataset = Run(
             f"ProcessTestData/{self.testdata_runid}"
         ).data.dataset
         trainflow = Run(f"TrainFlow/{self.trainflow_runid}").data
 
-        # Make predictions
-        y_pred1 = predictML(
-            model=trainflow.results1[ModelLevel0.AutoencoderEnsemble.name][
-                "model"
-            ],
-            X=test_dataset["AutoencodedPQ"]["df"],
-        )
-        y_pred2 = predictML(
-            model=trainflow.results1[ModelLevel0.PlainEnsemble.name]["model"],
-            X=test_dataset["Normal"]["df"],
-        )
-        y_pred3 = predictML(
-            model=trainflow.results1[ModelLevel0.NaiveEnsemble.name]["model"],
-            X=test_dataset["Normal"]["df"],
-        )
+        # Make level 1 predictions
+        level1_preds = {
+            ModelLevel0.AutoencoderEnsemble.value: predict1(
+                model=trainflow.results1[ModelLevel0.AutoencoderEnsemble.value][
+                    "model"
+                ],
+                X=test_dataset["AutoencodedPQ"]["df"].select(
+                    test_dataset["AutoencodedPQ"]["features"]
+                ),
+            ),
+            ModelLevel0.PlainEnsemble.value: predict1(
+                model=trainflow.results1[ModelLevel0.PlainEnsemble.value][
+                    "model"
+                ],
+                X=test_dataset["Normal"]["df"].select(
+                    test_dataset["Normal"]["features"]
+                ),
+            ),
+            ModelLevel0.NaiveEnsemble.value: predict1(
+                model=trainflow.results1[ModelLevel0.NaiveEnsemble.value][
+                    "model"
+                ],
+                X=test_dataset["Normal"]["df"].select(
+                    test_dataset["Normal"]["features"]
+                ),
+            ),
+        }
+        df_oof_preds1 = pl.DataFrame(level1_preds)
 
-        self.test_preds = predictLevel1(
-            oof_preds1=y_pred1,
-            oof_preds2=y_pred2,
-            oof_preds3=y_pred3,
-            coeffs=trainflow.results2["coeffs"],
+        # Make level 2 predictions
+        self.test_preds = predict2(
+            X=df_oof_preds1,
+            model=trainflow.results2["model"],
             thresholds=trainflow.results2["thresholds"],
         )
 

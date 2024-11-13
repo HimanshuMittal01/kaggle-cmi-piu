@@ -9,7 +9,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 from cmipiu.metrics import roundoff, quadratic_weighted_kappa
 
 
-def predictML(model, X, y=None, thresholds=None):
+def predict1(model, X, y=None, thresholds=None):
     # y_preds = np.zeros((len(X), len(models)))
     # for i, model in enumerate(models):
     #     y_preds[:, i] = model.predict(X.to_numpy())
@@ -29,8 +29,8 @@ def predictAutoEncoder(autoencoder, X):
     return autoencoder.encoder(inputs)
 
 
-def predictLevel1(oof_preds1, oof_preds2, oof_preds3, coeffs, thresholds, y_true=None):
-    oof_preds = oof_preds1 * coeffs[0] + oof_preds2 * coeffs[1] + oof_preds3 * coeffs[2]
+def predict2(X, model, thresholds, y_true=None):
+    oof_preds = model.predict(X)
     oof_preds_rounded = roundoff(oof_preds, thresholds=thresholds)
 
     if y_true is not None:

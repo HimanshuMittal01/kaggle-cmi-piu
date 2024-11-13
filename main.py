@@ -41,7 +41,7 @@ def prepare_train_data():
 def prepare_test_data():
     """Run flow to prepare testing data"""
     cfg = get_cfg()
-    with Runner("cmipiu/flows/prepare_test_data.py").run(cfg) as running:
+    with Runner("cmipiu/flows/prepare_test_data.py").run(config=cfg) as running:
         print(f"{running.run} completed")
 
 
@@ -56,23 +56,21 @@ def train():
 @app.command()
 def predict():
     """Run inference flow"""
-    cfg = get_cfg()
-    with Runner("cmipiu/flows/predict_sii.py").run(cfg) as running:
+    with Runner("cmipiu/flows/predict_sii.py").run() as running:
         print(f"{running.run} completed")
 
 
 @app.command()
 def tune(model: str):
     """Perform hypertuning on the given model"""
-    cfg = get_cfg()
     if model.upper() == "LGBM_REG":
-        with Runner("cmipiu/tuning/tune_lgbm_reg.py").run(cfg) as running:
+        with Runner("cmipiu/tuning/tune_lgbm_reg.py").run() as running:
             print(f"{running.run} completed")
     elif model.upper() == "XGB_REG":
-        with Runner("cmipiu/tuning/tune_xgb_reg.py").run(cfg) as running:
+        with Runner("cmipiu/tuning/tune_xgb_reg.py").run() as running:
             print(f"{running.run} completed")
     elif model.upper() == "CATBOOST_REG":
-        with Runner("cmipiu/tuning/tune_catboost_reg.py").run(cfg) as running:
+        with Runner("cmipiu/tuning/tune_catboost_reg.py").run() as running:
             print(f"{running.run} completed")
 
 

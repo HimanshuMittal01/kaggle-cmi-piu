@@ -219,6 +219,7 @@ class TrainFlow(FlowSpec):
         self.merge_artifacts(inputs, include=["processdata_runid"])
         self.next(self.train_model2)
 
+    @card
     @step
     def train_model2(self):
         """Ensemble level 1 models using Linear Regression."""

@@ -1,10 +1,13 @@
-"""
-Data Preprocessing Flow
+"""Metaflow FlowSpec implementation for preparation of the testing data.
+
+MIT License (https://opensource.org/license/MIT)
+Copyright (c) 2024 Himanshu Mittal
 """
 
+import logging
 from pathlib import Path
 
-from metaflow import FlowSpec, Flow, Run, step
+from metaflow import FlowSpec, Flow, Run, Parameter, JSONType, step
 
 from cmipiu.common import FeatureEngineeringSet
 from cmipiu.data.ingest import (
@@ -15,13 +18,27 @@ from cmipiu.data.ingest import (
     autoencode,
 )
 from cmipiu.data.features import feature_engineering
+from cmipiu.config import CustomLogger
 
 
 class ProcessTestData(FlowSpec):
+    cfg = Parameter(
+        "config",
+        default={},
+        type=JSONType,
+    )
+
+    @property
+    def logger(self) -> logging.Logger:
+        """Logger for print statements within the step code."""
+        logger = CustomLogger(self.__class__.__name__)
+        return logger
+
     @step
     def start(self):
-        """
-        Start separate streams for loading csv and parquet data
+        """Branch step - separate csv and parquet data.
+
+        Use raw version from the kaggle competition CMI-PIU 2024.
         """
         self.data_version = "child-mind-institute-problematic-internet-use/"
         self.data_dir = Path("input/raw/") / self.data_version
@@ -32,35 +49,36 @@ class ProcessTestData(FlowSpec):
 
     @step
     def preprocess_csv(self):
-        """
-        Load and clean csv file
+        """Load and clean csv data.
+
+        The cleaning is bit different from training here.
+        It does not drop any rows.
         """
         # Load data
-        print("Load testing data...")
+        self.logger.info("Load testing data...")
         test = load_csv_data(self.data_dir / "test.csv")
-        print(f"Test shape (loaded): {test.shape}")
+        self.logger.info(f"Test shape (loaded): {test.shape}")
 
         # Clean data
         self.test = clean_testcsv_data(test)
-        print(f"Test shape (after cleaning): {self.test.shape}")
+        self.logger.info(f"Test shape (after cleaning): {self.test.shape}")
 
         self.next(self.join_csv_and_pq)
 
     @step
     def preprocess_pq(self):
-        """
-        Create aggregate features for parquet actigraph data
-        """
+        """Create aggregate features per user from the actigraph parquet data."""
         # Make aggregate
         self.test_agg = get_aggregated_pq_files(
             self.data_dir / "series_test.parquet"
         )
-        print(f"Test aggregate shape: {self.test_agg.shape}")
+        self.logger.info(f"Test aggregate shape: {self.test_agg.shape}")
 
         self.next(self.autoencode_pq)
 
     @step
     def autoencode_pq(self):
+        """Use trained autoencoder from the training data preparation flow."""
         # Autoencode test
         run = Run(f"ProcessTrainData/{self.processdata_runid}")
         self.test_agg_encoded, _, _, _ = autoencode(
@@ -69,7 +87,7 @@ class ProcessTestData(FlowSpec):
             agg_mean=run.data.dataset["AutoencodedPQ"]["agg_mean"],
             agg_std=run.data.dataset["AutoencodedPQ"]["agg_std"],
         )
-        print(
+        self.logger.info(
             f"Test aggregate shape (after autoencoding): {self.test_agg.shape}"
         )
 
@@ -77,6 +95,7 @@ class ProcessTestData(FlowSpec):
 
     @step
     def join_csv_and_pq(self, inputs):
+        """Join step - Merge csv and parquet streams."""
         self.merge_artifacts(inputs)
 
         # Join aggregates with csv data
@@ -92,6 +111,7 @@ class ProcessTestData(FlowSpec):
 
     @step
     def branch_feature_engineering(self):
+        """Branch step - Create features parallely for non-autoencoded and autoencoded data."""
         self.feature_engineering_splits = list(
             FeatureEngineeringSet.__members__.keys()
         )
@@ -101,41 +121,45 @@ class ProcessTestData(FlowSpec):
 
     @step
     def feature_engineering(self):
+        """Perform feature engineering for each split.
+
+        Use artifacts trained while preprocessing training data.
+        """
         # Load artifacts
         run = Run(f"ProcessTrainData/{self.processdata_runid}")
 
         # Prepare dataset for training
-        print(
+        self.logger.info(
             f"[{self.input}] Test shape (after joining): {self.test[self.input].shape}"
         )
-        self.df, _ = feature_engineering(
+        self.df, _, _ = feature_engineering(
             self.test[self.input],
             training=False,
             artifacts=run.data.dataset[self.input]["artifacts"],
         )
-        print(
+        self.logger.info(
             f"[{self.input}] Train shape (after feature engineering): {self.df.shape}"
         )
 
-        # Get only relevant features
-        self.df = self.df.select(run.data.dataset[self.input]["features"])
+        # Get only relevant features from the earlier training flow
+        self.features = run.data.dataset[self.input]["features"]
 
         self.next(self.join_feature_engineering)
 
     @step
     def join_feature_engineering(self, inputs):
+        """Join step - Save dataset of each feature set."""
         # TODO: Data validation
         # assert train X shape and test X shape
         self.dataset = {}
         for fs in inputs:
-            self.dataset[fs.input] = {
-                "df": fs.df,
-            }
+            self.dataset[fs.input] = {"df": fs.df, "features": fs.features}
         self.merge_artifacts(inputs, include=["processdata_runid"])
         self.next(self.end)
 
     @step
     def end(self):
+        """End step - Does nothing."""
         pass
 
 
