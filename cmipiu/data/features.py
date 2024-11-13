@@ -22,7 +22,9 @@ def __add_fgc_bia_tvalues(
     fgc_mags = [
         col
         for col in df.columns
-        if col.startswith("FGC") and col != "FGC-Season" and not col.endswith("Zone")
+        if col.startswith("FGC")
+        and col != "FGC-Season"
+        and not col.endswith("Zone")
     ]
     bia_mags = [
         col
@@ -36,7 +38,8 @@ def __add_fgc_bia_tvalues(
 
     def make_new_wh(df: pl.DataFrame):
         return df.with_columns(
-            neww=pl.col("Physical-Weight") // 10, newh=pl.col("Physical-Height") // 6
+            neww=pl.col("Physical-Weight") // 10,
+            newh=pl.col("Physical-Height") // 6,
         )
 
     def make_meanstd_cols(
@@ -49,14 +52,18 @@ def __add_fgc_bia_tvalues(
                 [
                     pl.col(col)
                     .mean()
-                    .over(["Basic_Demos-Age", "Basic_Demos-Sex", "neww", "newh"])
+                    .over(
+                        ["Basic_Demos-Age", "Basic_Demos-Sex", "neww", "newh"]
+                    )
                     .alias(f"m{col}")
                     for col in cols_to_transform
                 ]
                 + [
                     pl.col(col)
                     .std()
-                    .over(["Basic_Demos-Age", "Basic_Demos-Sex", "neww", "newh"])
+                    .over(
+                        ["Basic_Demos-Age", "Basic_Demos-Sex", "neww", "newh"]
+                    )
                     .fill_null(1)
                     .alias(f"s{col}")
                     for col in cols_to_transform
@@ -76,9 +83,10 @@ def __add_fgc_bia_tvalues(
     def make_tvalues(df: pl.DataFrame):
         return df.with_columns(
             [
-                ((pl.col(col) - pl.col(f"m{col}")) / (pl.col(f"s{col}") + 1e-7)).alias(
-                    f"t{col}"
-                )
+                (
+                    (pl.col(col) - pl.col(f"m{col}"))
+                    / (pl.col(f"s{col}") + 1e-7)
+                ).alias(f"t{col}")
                 for col in cols_to_transform
             ]
         )
@@ -130,10 +138,12 @@ def __create_features(df: pl.DataFrame) -> pl.DataFrame:
     df = df.with_columns(
         (pl.col("Physical-BMI") * pl.col("Basic_Demos-Age")).alias("BMI_Age"),
         (
-            pl.col("PreInt_EduHx-computerinternet_hoursday") * pl.col("Basic_Demos-Age")
+            pl.col("PreInt_EduHx-computerinternet_hoursday")
+            * pl.col("Basic_Demos-Age")
         ).alias("Internet_Hours_Age"),
         (
-            pl.col("Physical-BMI") * pl.col("PreInt_EduHx-computerinternet_hoursday")
+            pl.col("Physical-BMI")
+            * pl.col("PreInt_EduHx-computerinternet_hoursday")
         ).alias("BMI_Internet_Hours"),
         (pl.col("BIA-BIA_Fat") / pl.col("BIA-BIA_BMI")).alias("BFP_BMI"),
         (pl.col("BIA-BIA_FFMI") / pl.col("BIA-BIA_Fat")).alias("FFMI_BFP"),
@@ -145,7 +155,9 @@ def __create_features(df: pl.DataFrame) -> pl.DataFrame:
         (pl.col("BIA-BIA_DEE") / pl.col("Physical-Weight")).alias("DEE_Weight"),
         (pl.col("BIA-BIA_SMM") / pl.col("Physical-Height")).alias("SMM_Height"),
         (pl.col("BIA-BIA_SMM") / pl.col("BIA-BIA_FMI")).alias("Muscle_to_Fat"),
-        (pl.col("BIA-BIA_TBW") / pl.col("Physical-Weight")).alias("Hydration_Status"),
+        (pl.col("BIA-BIA_TBW") / pl.col("Physical-Weight")).alias(
+            "Hydration_Status"
+        ),
         (pl.col("BIA-BIA_ICW") / pl.col("BIA-BIA_TBW")).alias("ICW_TBW"),
     )
 
@@ -205,16 +217,22 @@ def __transform_features(
 
     if training:
         # Fit ordinal encoder
-        encoder = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)
+        encoder = OrdinalEncoder(
+            handle_unknown="use_encoded_value", unknown_value=-1
+        )
         encoder.fit(df[season_cols])
 
         # put that in encoder
         artifacts["encoder"] = encoder
 
-    assert "encoder" in artifacts, "Artifacts must contain 'encoder' when not training."
+    assert (
+        "encoder" in artifacts
+    ), "Artifacts must contain 'encoder' when not training."
     res = artifacts["encoder"].transform(df[season_cols])
     encoded_season_df = pl.DataFrame(
-        res, schema=list(artifacts["encoder"].get_feature_names_out()), orient="row"
+        res,
+        schema=list(artifacts["encoder"].get_feature_names_out()),
+        orient="row",
     )
     df = df.with_columns(encoded_season_df)
 
@@ -269,26 +287,7 @@ def __impute_features(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def feature_engineering(
-    df: pl.DataFrame, training: bool = False, artifacts: dict[str, Any] = {}
-):
-    """
-    Assembles all feature engineering steps in one
-    """
-    df = __add_fgc_bia_tvalues(df, training=training, artifacts=artifacts)
-
-    # Drop rows where target is unknown
-    if training:
-        df = df.drop_nulls(subset=["sii"])
-
-    df = __create_features(df)
-    df = __transform_features(df, training=training, artifacts=artifacts)
-    df = __impute_features(df)
-
-    return df, artifacts
-
-
-def get_features(df: pl.DataFrame) -> list[str]:
+def __get_features(df: pl.DataFrame) -> list[str]:
     """
     Exclude some features and return the feature columns
     """
@@ -364,3 +363,24 @@ def get_features(df: pl.DataFrame) -> list[str]:
 
     features = df.select(pl.exclude(exclude_features)).drop("id").columns
     return features
+
+
+def feature_engineering(
+    df: pl.DataFrame, training: bool = False, artifacts: dict[str, Any] = {}
+):
+    """
+    Assembles all feature engineering steps in one
+    """
+    df = __add_fgc_bia_tvalues(df, training=training, artifacts=artifacts)
+
+    # Drop rows where target is unknown
+    if training:
+        df = df.drop_nulls(subset=["sii"])
+
+    df = __create_features(df)
+    df = __transform_features(df, training=training, artifacts=artifacts)
+    df = __impute_features(df)
+
+    features = __get_features(df)
+
+    return df, features, artifacts

@@ -21,13 +21,18 @@ class CustomLogger(logging.Logger):
         """
         super().__init__(name, level)
 
-        # Setup rotating file handler
+        # Setup stream handler and rotating file handler
         Path(log_filepath).parent.mkdir(exist_ok=True, parents=True)
-        handler = RotatingFileHandler(
+
+        stream_handler = logging.StreamHandler()
+        file_handler = RotatingFileHandler(
             log_filepath, maxBytes=maxBytes, backupCount=0
         )
+
         formatter = logging.Formatter(
             "%(asctime)s - %(levelname)s - %(message)s"
         )
-        handler.setFormatter(formatter)
-        self.addHandler(handler)
+        file_handler.setFormatter(formatter)
+
+        self.addHandler(stream_handler)
+        self.addHandler(file_handler)

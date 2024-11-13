@@ -35,3 +35,5 @@ This will enable colors in printing. The problem is that because we're running f
 support stdlibrary logging https://github.com/Netflix/metaflow/issues/180
 
 Adding CLI available options in `tune()` command
+
+Use end step for splitting into train and valid indices in prepare training data flow

@@ -49,7 +49,7 @@ def prepare_test_data():
 def train():
     """Run flow to train all the models"""
     cfg = get_cfg()
-    with Runner("cmipiu/flows/train_ml_models.py").run(cfg) as running:
+    with Runner("cmipiu/flows/train_ml_models.py").run(config=cfg) as running:
         print(f"{running.run} completed")
 
 

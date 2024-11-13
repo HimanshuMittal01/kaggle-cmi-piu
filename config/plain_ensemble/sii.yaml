@@ -1,4 +1,10 @@
 ---
+fs: Normal
+target_col: 'sii'
+init_thresholds:
+- 0.5
+- 1.5
+- 2.5
 params:
 - name: lgbm1
   model_class: LGBMRegressor

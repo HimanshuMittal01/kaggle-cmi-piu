@@ -1,45 +1,19 @@
 ---
+# This is used while preprocessing parquet stream
 autoencoder:
   encoding_dim: 30
   epochs: 100
   learning_rate: 0.001
 
-autoencoder_ensemble:
-  fs: AutoencodedPQ
-  params_path: "config/autoencoder_ensemble/optuna_with_sii.yaml"
-  target_col: 'sii'
-  init_thresholds:
-  - 0.5
-  - 1.5
-  - 2.5
-  # params_path: "config/autoencoder_ensemble/optuna_with_pciat.yaml"
-  # init_thresholds:
-  # - 30
-  # - 50
-  # - 80
+# List of models to train in the training flow
+train_models:
+- autoencoder_ensemble
+- plain_ensemble
+- naive_ensemble
 
-plain_ensemble:
-  fs: Normal
-  params_path: "config/plain_ensemble/optuna_with_sii.yaml"
-  target_col: 'sii'
-  init_thresholds:
-  - 0.5
-  - 1.5
-  - 2.5
-  # params_path: "config/plain_ensemble/optuna_with_pciat.yaml"
-  # init_thresholds:
-  # - 30
-  # - 50
-  # - 80
-
-naive_ensemble:
-  fs: Normal
-  params_path: "config/naive_ensemble/default.yaml"
-  target_col: 'sii'
-  init_thresholds:
-  - 0.5
-  - 1.5
-  - 2.5
-
-tryxgb:
-  _target_: xgboost.XGBRegressor
+# Define model definitions
+defaults:
+  - autoencoder_ensemble: sii
+  - naive_ensemble: sii
+  - plain_ensemble: sii
+  - _self_

@@ -1,4 +1,10 @@
 ---
+fs: AutoencodedPQ
+target_col: 'PCIAT-PCIAT_Total'
+init_thresholds:
+- 30
+- 50
+- 80
 params:
 - name: lgbm1
   model_class: LGBMRegressor

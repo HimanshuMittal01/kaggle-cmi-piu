@@ -17,7 +17,7 @@ from cmipiu.data.ingest import (
     merge_csv_pqagg_data,
     autoencode,
 )
-from cmipiu.data.features import feature_engineering, get_features
+from cmipiu.data.features import feature_engineering
 from cmipiu.config import CustomLogger
 
 
@@ -136,15 +136,12 @@ class ProcessTrainData(FlowSpec):
         self.logger.info(
             f"[{self.input}] Train shape (after joining): {self.train[self.input].shape}"
         )
-        self.df, self.artifacts = feature_engineering(
+        self.df, self.features, self.artifacts = feature_engineering(
             self.train[self.input], training=True
         )
         self.logger.info(
             f"[{self.input}] Train shape (after feature engineering): {self.df.shape}"
         )
-
-        # Get feature columns
-        self.features = get_features(self.df)
 
         self.next(self.join_feature_engineering)
 
@@ -171,10 +168,7 @@ class ProcessTrainData(FlowSpec):
 
     @step
     def end(self):
-        """End step
-
-        Split into train and valid if applicable. No split in this case.
-        """
+        """End step - Does nothing."""
         pass
 
 
